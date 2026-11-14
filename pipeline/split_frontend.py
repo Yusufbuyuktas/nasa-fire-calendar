@@ -23,15 +23,16 @@ for (year,) in years:
     output_path = output.as_posix().replace("'", "''")
 
     con.execute(f"""
-        COPY (
-            SELECT *
-            FROM read_csv_auto('{source}')
-            WHERE year = {int(year)}
-            ORDER BY month, grid_id
-        )
-        TO '{output_path}'
-        (FORMAT CSV, HEADER TRUE)
-    """)
+    COPY (
+        SELECT *
+        FROM read_csv_auto('{source}')
+        WHERE year = {int(year)}
+          AND NOT (year = 2026 AND month >= 11)
+        ORDER BY month, grid_id
+    )
+    TO '{output_path}'
+    (FORMAT CSV, HEADER TRUE)
+""")
 
     print(f"{year}.csv oluşturuldu")
 
