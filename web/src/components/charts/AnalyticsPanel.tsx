@@ -1,14 +1,14 @@
 import type { ElementType } from 'react';
+import { useState, useMemo } from 'react'; // Bİlgi: useState ve useMemo eklendi
 import ReactECharts from 'echarts-for-react';
-// HATA DÜZELTİLDİ: FireGridRow yerine FireDataRow import ediliyor
 import type { FireDataRow } from '../../types/fireData';
 import { downloadRegionSummaryCsv } from '../../services/csvExport';
+import EmailAlertSimulation from './EmailAlertSimulation';
 
-// ÇÖZÜM: TypeScript'in kendi tavsiyesine uyup araya 'unknown' koyarak zorla dönüştürüyoruz:
-const ECharts = ReactECharts as unknown as ElementType; 
+const ECharts = ReactECharts as unknown as ElementType;
 
 interface AnalyticsPanelProps {
-  selectedCellData: FireDataRow[];  
+  selectedCellData: FireDataRow[];
   regionTitle?: string;
 }
 
@@ -18,12 +18,29 @@ export default function AnalyticsPanel({
   selectedCellData,
   regionTitle = 'secili-bolge',
 }: AnalyticsPanelProps) {
-  // 1. Aylık Ortalama & Tepe Ay Hesabı (Mevsimsellik için)
+  
+  // --- YENİ EKLENEN FİLTRE STATE'LERİ BURADA OLMALI ---
+  const [filterYear, setFilterYear] = useState<string>('all');
+  const [filterAnomaly, setFilterAnomaly] = useState<string>('all');
+
+  const filteredData = useMemo(() => {
+    return selectedCellData.filter((row) => {
+      const passYear = filterYear === 'all' || row.year.toString() === filterYear;
+      const passAnomaly = 
+        filterAnomaly === 'all' || 
+        (filterAnomaly === 'high' && row.anomaly_level === 'HIGH') ||
+        (filterAnomaly === 'very_high' && row.anomaly_level === 'VERY_HIGH');
+      return passYear && passAnomaly;
+    });
+  }, [selectedCellData, filterYear, filterAnomaly]);
+  // --------------------------------------------------
+
+  // --- GRAFİK HESAPLAMALARI ARTIK filteredData İLE YAPILMALI ---
   const monthlyTotals = Array(12).fill(0);
   const monthlyCounts = Array(12).fill(0);
 
-  selectedCellData.forEach((row) => {
-    // HATA DÜZELTİLDİ: Yusuf'un yeni tipine göre month artık zorunlu ve activity_index eklendi
+  // NOT: selectedCellData yerine filteredData kullanıyoruz
+  filteredData.forEach((row) => {
     const m = row.month - 1;
     if (m >= 0 && m < 12) {
       monthlyTotals[m] += row.activity_index;
@@ -36,7 +53,7 @@ export default function AnalyticsPanel({
   );
   const maxVal = Math.max(...monthlyAvg);
 
-// 2. Radyal Mevsimsellik Grafiği Ayarları
+  // 2. Radyal Mevsimsellik Grafiği Ayarları (Kodu aynı)
   const radialOption = {
     backgroundColor: 'transparent',
     title: {
@@ -174,9 +191,34 @@ export default function AnalyticsPanel({
         </button>
       </div>
 
+      <div className="flex gap-3 text-sm">
+        <select 
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          className="bg-gray-800 border border-gray-700 text-gray-200 rounded px-2 py-1 flex-1 outline-none focus:border-orange-500"
+        >
+          <option value="all">Tüm Yıllar</option>
+          {/* Daha sonra dinamik olarak 2000-2026 eklenebilir, şimdilik statik birkaç örnek */}
+          <option value="2021">Sadece 2021</option>
+          <option value="2022">Sadece 2022</option>
+          <option value="2023">Sadece 2023</option>
+        </select>
+
+        <select 
+          value={filterAnomaly}
+          onChange={(e) => setFilterAnomaly(e.target.value)}
+          className="bg-gray-800 border border-gray-700 text-gray-200 rounded px-2 py-1 flex-1 outline-none focus:border-orange-500"
+        >
+          <option value="all">Tüm Anomali Seviyeleri</option>
+          <option value="high">Yüksek (HIGH)</option>
+          <option value="very_high">Çok Yüksek (VERY_HIGH)</option>
+        </select>
+      </div>
+
       <ECharts option={heatmapOption} style={{ height: '210px' }} />
       <ECharts option={radialOption} style={{ height: '230px' }} />
       <ECharts option={anomalyOption} style={{ height: '210px' }} />
+      <EmailAlertSimulation regionTitle={regionTitle} />
     </div>
   );
 }
