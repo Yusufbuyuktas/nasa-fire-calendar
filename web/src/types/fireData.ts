@@ -13,7 +13,7 @@ export type ConfidenceLevel =
   | 'MEDIUM'
   | 'HIGH';
 
-export interface FireGridRow {
+export interface FireDataRow {
   grid_id: string;
   lat: number;
   lon: number;
@@ -30,3 +30,6 @@ export interface FireGridRow {
   // Historical data sufficiency category
   confidence_level: ConfidenceLevel;
 }
+
+// Backward compatibility with the data pipeline service
+export type FireGridRow = FireDataRow;
