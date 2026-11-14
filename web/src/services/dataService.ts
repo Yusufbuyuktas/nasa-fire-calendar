@@ -1,6 +1,5 @@
-// web/src/services/dataService.ts
 import Papa from 'papaparse';
-import type { FireDataRow } from '../types/fireData';
+import type { FireDataRow, AnomalyLevel } from '../types/fireData';
 
 const dataCache: Record<number, FireDataRow[]> = {};
 
@@ -18,14 +17,21 @@ export const fetchFireDataForYear = async (year: number): Promise<FireDataRow[]>
       dynamicTyping: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const rawData = results.data as Record<string, number>[];
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const rawData = results.data as Record<string, any>[];
+
+        
         
         const parsedData: FireDataRow[] = rawData.map((row) => ({
+          grid_id: row.grid_id || '',
           lat: row.lat || row.latitude,
           lon: row.lon || row.longitude,
-          fire_count: row.fire_count || row.count || 1,
-          anomaly_score: row.anomaly_score || row.anomaly || 0,
-          month: row.month
+          year: row.year || year,
+          month: row.month || 1,
+          activity_index: row.activity_index || row.fire_count || row.count || 1,
+          z_score: row.z_score !== undefined ? row.z_score : (row.anomaly_score || null),
+          anomaly_level: (row.anomaly_level as AnomalyLevel) || 'NORMAL',
+          source: row.source || 'Unknown'
         }));
         
         dataCache[year] = parsedData;

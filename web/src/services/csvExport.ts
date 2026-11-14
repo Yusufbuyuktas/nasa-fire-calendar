@@ -6,16 +6,21 @@ export const downloadRegionSummaryCsv = (
 ) => {
   if (!rows || rows.length === 0) return;
 
-  const headers = ['lat', 'lon', 'month', 'fire_count', 'anomaly_score'];
+  // HATA DÜZELTİLDİ: Başlıklar yeni tipe göre güncellendi
+  const headers = ['grid_id', 'lat', 'lon', 'year', 'month', 'activity_index', 'z_score', 'anomaly_level', 'source'];
   const csvLines = [
     headers.join(','),
     ...rows.map((r) =>
       [
+        r.grid_id,
         r.lat,
         r.lon,
-        r.month ?? '',
-        r.fire_count,
-        r.anomaly_score ?? 0,
+        r.year,
+        r.month,
+        r.activity_index,
+        r.z_score ?? '', // null değerini boş string yapıyoruz
+        r.anomaly_level,
+        r.source
       ].join(',')
     ),
   ];

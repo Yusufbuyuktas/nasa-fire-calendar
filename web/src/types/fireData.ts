@@ -6,7 +6,7 @@ export type AnomalyLevel =
   | 'VERY_HIGH'
   | 'INSUFFICIENT_DATA';
 
-export interface FireGridRow {
+export interface FireDataRow {
   grid_id: string;
   lat: number;
   lon: number;

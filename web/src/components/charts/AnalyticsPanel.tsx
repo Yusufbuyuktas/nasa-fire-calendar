@@ -1,5 +1,6 @@
 import type { ElementType } from 'react';
 import ReactECharts from 'echarts-for-react';
+// HATA DÜZELTİLDİ: FireGridRow yerine FireDataRow import ediliyor
 import type { FireDataRow } from '../../types/fireData';
 import { downloadRegionSummaryCsv } from '../../services/csvExport';
 
@@ -22,9 +23,10 @@ export default function AnalyticsPanel({
   const monthlyCounts = Array(12).fill(0);
 
   selectedCellData.forEach((row) => {
-    const m = (row.month ?? 1) - 1;
+    // HATA DÜZELTİLDİ: Yusuf'un yeni tipine göre month artık zorunlu ve activity_index eklendi
+    const m = row.month - 1;
     if (m >= 0 && m < 12) {
-      monthlyTotals[m] += row.fire_count;
+      monthlyTotals[m] += row.activity_index;
       monthlyCounts[m] += 1;
     }
   });
@@ -38,7 +40,7 @@ export default function AnalyticsPanel({
   const radialOption = {
     backgroundColor: 'transparent',
     title: {
-      text: 'Mevsimsellik (Aylık Ortalama)',
+      text: 'Mevsimsellik (Aylık Ortalama Aktivite)',
       textStyle: { color: '#f3f4f6', fontSize: 14 },
     },
     tooltip: { trigger: 'item' },
@@ -70,13 +72,13 @@ export default function AnalyticsPanel({
   const anomalyOption = {
     backgroundColor: 'transparent',
     title: {
-      text: 'Anomali Göstergesi (Z-Skoru / Sapma)',
+      text: 'Anomali Göstergesi (Z-Skoru)',
       textStyle: { color: '#f3f4f6', fontSize: 14 },
     },
     tooltip: { trigger: 'axis' },
     xAxis: {
       type: 'category',
-      data: selectedCellData.map((r) => `Ay ${r.month ?? '-'}`),
+      data: selectedCellData.map((r) => `Ay ${r.month}`),
       axisLabel: { color: '#9ca3af' },
     },
     yAxis: {
@@ -88,7 +90,8 @@ export default function AnalyticsPanel({
       {
         type: 'bar',
         data: selectedCellData.map((r) => {
-          const score = r.anomaly_score ?? 0;
+          // HATA DÜZELTİLDİ: Yusuf z_score özelliğini number | null yaptı
+          const score = r.z_score ?? 0;
           return {
             value: score,
             itemStyle: {
@@ -102,9 +105,9 @@ export default function AnalyticsPanel({
 
   // 4. Yıl x Ay Takvim Isı Haritası (Heatmap) Ayarları
   const heatmapData = selectedCellData.map((r, idx) => [
-    (r.month ?? 1) - 1,
+    r.month - 1,
     Math.floor(idx / 12),
-    r.fire_count,
+    r.activity_index,
   ]);
 
   const heatmapOption = {
@@ -127,7 +130,7 @@ export default function AnalyticsPanel({
     },
     visualMap: {
       min: 0,
-      max: Math.max(...selectedCellData.map((r) => r.fire_count), 10),
+      max: Math.max(...selectedCellData.map((r) => r.activity_index), 10),
       calculable: true,
       orient: 'horizontal',
       left: 'center',
@@ -140,7 +143,7 @@ export default function AnalyticsPanel({
     },
     series: [
       {
-        name: 'Yangın Yoğunluğu',
+        name: 'Aktivite İndeksi',
         type: 'heatmap',
         data: heatmapData,
       },
