@@ -1,13 +1,19 @@
-// web/src/types/fireData.ts
-export interface FireDataRow {
-  lat: number;           // Enlem
-  lon: number;           // Boylam
-  fire_count: number;    // O hücredeki yangın/hotspot sayısı
-  anomaly_score?: number; // Varsa anomali skoru (z-score vb.)
-  month?: number;        // İsteğe bağlı (aylık filtreleme için)
-}
+export type AnomalyLevel =
+  | 'VERY_LOW'
+  | 'LOW'
+  | 'NORMAL'
+  | 'HIGH'
+  | 'VERY_HIGH'
+  | 'INSUFFICIENT_DATA';
 
-export interface YearlyData {
+export interface FireGridRow {
+  grid_id: string;
+  lat: number;
+  lon: number;
   year: number;
-  data: FireDataRow[];
+  month: number;
+  activity_index: number;
+  z_score: number | null;
+  anomaly_level: AnomalyLevel;
+  source: string;
 }
