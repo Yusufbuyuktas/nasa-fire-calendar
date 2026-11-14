@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { GlobeView } from './components/globe/GlobeView';
-import { AnalyticsPanel } from './components/charts/AnalyticsPanel';
-import type { FireGridRow } from './types/fireData';
+import AnalyticsPanel from './components/charts/AnalyticsPanel';
+import type { FireDataRow } from './types/fireData';
 
 export default function App() {
-  const [selectedCell, setSelectedCell] = useState<FireGridRow | null>(null);
+  const [selectedCell, setSelectedCell] = useState<FireDataRow | null>(null);
 
   return (
     <div className="flex h-screen w-screen flex-col bg-slate-950 text-slate-100 overflow-hidden">
@@ -27,7 +27,10 @@ export default function App() {
           <GlobeView selectedCell={selectedCell} onSelectCell={setSelectedCell} />
         </section>
         <aside className="w-5/12 h-full overflow-y-auto">
-          <AnalyticsPanel selectedCell={selectedCell} />
+          <AnalyticsPanel 
+  selectedCellData={selectedCell ? [selectedCell] : []} 
+  regionTitle={selectedCell?.grid_id}
+/>
         </aside>
       </main>
     </div>

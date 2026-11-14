@@ -36,12 +36,13 @@ export default function AnalyticsPanel({
   );
   const maxVal = Math.max(...monthlyAvg);
 
-  // 2. Radyal Mevsimsellik Grafiği Ayarları
+// 2. Radyal Mevsimsellik Grafiği Ayarları
   const radialOption = {
     backgroundColor: 'transparent',
     title: {
       text: 'Mevsimsellik (Aylık Ortalama Aktivite)',
       textStyle: { color: '#f3f4f6', fontSize: 14 },
+      top: 0, // Başlığı en üste sabitledik
     },
     tooltip: { trigger: 'item' },
     angleAxis: {
@@ -53,7 +54,8 @@ export default function AnalyticsPanel({
       axisLabel: { color: '#6b7280', fontSize: 10 },
       splitLine: { lineStyle: { color: '#374151' } },
     },
-    polar: { radius: '68%' },
+    // Grafiği biraz küçültüp (55%) aşağı ittik (55%) ki başlığa değmesin:
+    polar: { radius: '55%', center: ['50%', '55%'] },
     series: [
       {
         type: 'bar',
@@ -61,7 +63,7 @@ export default function AnalyticsPanel({
         data: monthlyAvg.map((val) => ({
           value: val,
           itemStyle: {
-            color: val === maxVal && val > 0 ? '#f97316' : '#38bdf8', // Tepe ay turuncu vurgulu
+            color: val === maxVal && val > 0 ? '#f97316' : '#38bdf8',
           },
         })),
       },
@@ -74,8 +76,11 @@ export default function AnalyticsPanel({
     title: {
       text: 'Anomali Göstergesi (Z-Skoru)',
       textStyle: { color: '#f3f4f6', fontSize: 14 },
+      top: 0,
     },
     tooltip: { trigger: 'axis' },
+    // Eksenlerin dışarı taşmaması için grid (ızgara) boşluklarını ayarladık:
+    grid: { top: 45, bottom: 30, left: 40, right: 20 },
     xAxis: {
       type: 'category',
       data: selectedCellData.map((r) => `Ay ${r.month}`),
@@ -90,12 +95,11 @@ export default function AnalyticsPanel({
       {
         type: 'bar',
         data: selectedCellData.map((r) => {
-          // HATA DÜZELTİLDİ: Yusuf z_score özelliğini number | null yaptı
           const score = r.z_score ?? 0;
           return {
             value: score,
             itemStyle: {
-              color: score >= 0 ? '#ef4444' : '#3b82f6', // Pozitif anomali kırmızı, negatif mavi
+              color: score >= 0 ? '#ef4444' : '#3b82f6',
             },
           };
         }),
@@ -115,9 +119,11 @@ export default function AnalyticsPanel({
     title: {
       text: 'Yangın Takvimi Isı Haritası',
       textStyle: { color: '#f3f4f6', fontSize: 14 },
+      top: 0,
     },
     tooltip: { position: 'top' },
-    grid: { height: '55%', top: '22%' },
+    // Alt kısımdan 65px boşluk bıraktık ki renk çubuğu oraya sığsın:
+    grid: { top: 45, bottom: 65, left: 40, right: 20 },
     xAxis: {
       type: 'category',
       data: MONTHS,
@@ -134,10 +140,11 @@ export default function AnalyticsPanel({
       calculable: true,
       orient: 'horizontal',
       left: 'center',
-      bottom: '0%',
+      bottom: 0, // En alta dayadık
+      itemWidth: 15,
+      itemHeight: 120, // Çubuğu biraz incelttik
       textStyle: { color: '#9ca3af' },
       inRange: {
-        // Erişilebilir (renk körü dostu) Viridis/Cividis tonları
         color: ['#1e293b', '#38bdf8', '#facc15', '#f97316', '#dc2626'],
       },
     },
