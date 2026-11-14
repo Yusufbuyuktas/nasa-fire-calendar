@@ -68,7 +68,7 @@ export default function AnalyticsPanel({
       axisLabel: { color: '#9ca3af' },
     },
     radiusAxis: {
-      axisLabel: { color: '#6b7280', fontSize: 10 },
+      axisLabel: { color: '#6b7280', fontSize: 10, showMaxLabel: false },
       splitLine: { lineStyle: { color: '#374151' } },
     },
     // Grafiği biraz küçültüp (55%) aşağı ittik (55%) ki başlığa değmesin:
@@ -139,8 +139,7 @@ export default function AnalyticsPanel({
       top: 0,
     },
     tooltip: { position: 'top' },
-    // Alt kısımdan 65px boşluk bıraktık ki renk çubuğu oraya sığsın:
-    grid: { top: 45, bottom: 65, left: 40, right: 20 },
+    grid: { top: 45, bottom: 85, left: 40, right: 20 },
     xAxis: {
       type: 'category',
       data: MONTHS,
@@ -157,9 +156,9 @@ export default function AnalyticsPanel({
       calculable: true,
       orient: 'horizontal',
       left: 'center',
-      bottom: 0, // En alta dayadık
+      bottom: 0,
       itemWidth: 15,
-      itemHeight: 120, // Çubuğu biraz incelttik
+      itemHeight: 120,
       textStyle: { color: '#9ca3af' },
       inRange: {
         color: ['#1e293b', '#38bdf8', '#facc15', '#f97316', '#dc2626'],
@@ -215,10 +214,25 @@ export default function AnalyticsPanel({
         </select>
       </div>
 
-      <ECharts option={heatmapOption} style={{ height: '210px' }} />
-      <ECharts option={radialOption} style={{ height: '230px' }} />
-      <ECharts option={anomalyOption} style={{ height: '210px' }} />
-      <EmailAlertSimulation regionTitle={regionTitle} />
-    </div>
-  );
-}
+      {/* Grafikler */}
+        <div className="flex flex-col gap-6 mt-4">
+          <div className="w-full h-[220px] shrink-0">
+            <ECharts option={heatmapOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
+          </div>
+          
+          <div className="w-full h-[250px] shrink-0">
+            <ECharts option={radialOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
+          </div>
+          
+          <div className="w-full h-[220px] shrink-0">
+            <ECharts option={anomalyOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
+          </div>
+        </div>
+
+        {/* E-Posta Simülasyonu */}
+        <div className="shrink-0 mt-2">
+          <EmailAlertSimulation regionTitle={regionTitle} />
+        </div>
+      </div>
+    );
+  }
