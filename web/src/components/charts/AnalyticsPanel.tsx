@@ -3,7 +3,16 @@ import type * as echarts from 'echarts';
 import { Globe2, Loader2, AlertCircle, Download } from 'lucide-react';
 import type { FireDataRow } from '../../types/fireData';
 import { downloadRegionSummaryCsv } from '../../services/csvExport';
+import {
+  analyzeCellSeasonality,
+  buildZeroFilledChronologicalSeries,
+  DATASET_END_YEAR,
+  DATASET_START_YEAR,
+  isWithinObservationWindow,
+  MONTH_SHORT,
+} from '../../utils/seasonality';
 import EChartBox from './EChartBox';
+import RiskCalendarCard from './RiskCalendarCard';
 import EmailAlertSimulation from './EmailAlertSimulation';
 
 interface AnalyticsPanelProps {
@@ -27,28 +36,6 @@ interface HeatmapPoint {
   year: number;
   month: number;
   inWindow: boolean;
-}
-
-const MONTHS = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-const DATASET_START_YEAR = 2000;
-const DATASET_START_MONTH = 11; // Kasım 2000 (MODIS Terra başlangıcı)
-const DATASET_END_YEAR = 2026;
-const DATASET_END_MONTH = 10; // Ekim 2026 (kısmi yıl sonu)
-
-function isWithinObservationWindow(year: number, month: number): boolean {
-  if (year < DATASET_START_YEAR || year > DATASET_END_YEAR) return false;
-  if (year === DATASET_START_YEAR && month < DATASET_START_MONTH) return false;
-  if (year === DATASET_END_YEAR && month > DATASET_END_MONTH) return false;
-  return true;
-}
-
-function computeMedian(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid];
 }
 
 export default function AnalyticsPanel({
@@ -88,45 +75,41 @@ export default function AnalyticsPanel({
     });
   }, [selectedCellData, effectiveFilterYear, filterAnomaly]);
 
-  // D4: Gözlem penceresindeki kayıtsız ayları 0 kabul eden sıfır doldurmalı aylık istatistikler
-  const monthlyStats = useMemo(() => {
-    const buckets: number[][] = Array.from({ length: 12 }, () => []);
-    const rowLookup = new Map<string, number>();
+  // E1: 2000–2026 Mevsimsellik ve Periyodiklik Raporu
+  const seasonalityReport = useMemo(
+    () => analyzeCellSeasonality(selectedCellData),
+    [selectedCellData]
+  );
 
-    for (const row of selectedCellData) {
-      rowLookup.set(`${row.year}-${row.month}`, row.activity_index);
+  // E2: 2000–2026 Sıfır Doldurmalı Tam Kronolojik Aktivite Serisi
+  const chronologicalSeries = useMemo(
+    () => buildZeroFilledChronologicalSeries(selectedCellData),
+    [selectedCellData]
+  );
+
+  // D4: Seçili yıl filtresine göre sıfır doldurmalı aylık istatistikler
+  const filteredSeasonality = useMemo(() => {
+    if (effectiveFilterYear === 'all') {
+      return seasonalityReport.monthlyStats;
     }
-
-    const yearsToInclude =
-      effectiveFilterYear === 'all'
-        ? Array.from(
-            { length: DATASET_END_YEAR - DATASET_START_YEAR + 1 },
-            (_, i) => DATASET_START_YEAR + i
-          )
-        : [Number(effectiveFilterYear)];
-
-    for (const year of yearsToInclude) {
-      for (let month = 1; month <= 12; month += 1) {
-        if (!isWithinObservationWindow(year, month)) continue;
-        const val = rowLookup.get(`${year}-${month}`) ?? 0;
-        buckets[month - 1].push(val);
-      }
-    }
-
-    const means = buckets.map((vals) => {
-      if (vals.length === 0) return 0;
-      const sum = vals.reduce((acc, v) => acc + v, 0);
-      return Math.round((sum / vals.length) * 10) / 10;
+    const targetYear = Number(effectiveFilterYear);
+    return analyzeCellSeasonality(
+      selectedCellData.filter((r) => r.year === targetYear)
+    ).monthlyStats.map((stat) => {
+      const inWin = isWithinObservationWindow(targetYear, stat.month);
+      const matched = selectedCellData.find(
+        (r) => r.year === targetYear && r.month === stat.month
+      );
+      const val = inWin && matched ? Math.round(matched.activity_index * 10) / 10 : 0;
+      return {
+        ...stat,
+        meanActivity: val,
+        medianActivity: val,
+      };
     });
+  }, [effectiveFilterYear, seasonalityReport.monthlyStats, selectedCellData]);
 
-    const medians = buckets.map(
-      (vals) => Math.round(computeMedian(vals) * 10) / 10
-    );
-
-    return { means, medians };
-  }, [selectedCellData, effectiveFilterYear]);
-
-  // D1: Gerçek Yıl × Ay takvim ısı haritası verisi (yalnızca saf ilkel değerler)
+  // D1: Gerçek Yıl × Ay takvim ısı haritası verisi
   const calendarHeatmap = useMemo(() => {
     const years = Array.from(
       { length: DATASET_END_YEAR - DATASET_START_YEAR + 1 },
@@ -180,10 +163,100 @@ export default function AnalyticsPanel({
     return { yearLabels, points, maxActivity };
   }, [selectedCellData]);
 
+  // E2: 2000–2026 Tam Zaman Serisi Aktivite Grafiği
+  const activityTimelineOption = useMemo<echarts.EChartsOption>(() => {
+    const displaySeries =
+      effectiveFilterYear === 'all'
+        ? chronologicalSeries
+        : chronologicalSeries.filter((pt) => pt.year === Number(effectiveFilterYear));
+
+    return {
+      backgroundColor: 'transparent',
+      title: {
+        text: 'Aktivite İndeksi Zaman Serisi (2000–2026)',
+        textStyle: { color: '#f3f4f6', fontSize: 13 },
+        top: 0,
+      },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: '#0f172a',
+        borderColor: '#334155',
+        textStyle: { color: '#f8fafc', fontSize: 12 },
+        formatter: (params: unknown) => {
+          const list = Array.isArray(params) ? params : [params];
+          const item = list[0] as
+            | {
+                data?: {
+                  periodLabel: string;
+                  value: number;
+                  anomalyLevel: string;
+                  source: string;
+                };
+              }
+            | undefined;
+          if (!item || !item.data) return '';
+          const { periodLabel, value, anomalyLevel, source } = item.data;
+          return `
+            <div>
+              <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">${periodLabel}</div>
+              <div>Aktivite İndeksi: <b>${value}</b></div>
+              <div>Anomali: <b>${anomalyLevel}</b></div>
+              <div style="color:#94a3b8;font-size:11px;">Kaynak: ${source}</div>
+            </div>
+          `;
+        },
+      },
+      grid: { top: 42, bottom: 48, left: 42, right: 16 },
+      xAxis: {
+        type: 'category',
+        data: displaySeries.map((pt) => pt.label),
+        axisLabel: { color: '#9ca3af', fontSize: 10 },
+      },
+      yAxis: {
+        type: 'value',
+        min: 0,
+        axisLabel: { color: '#9ca3af', fontSize: 10 },
+        splitLine: { lineStyle: { color: '#374151' } },
+      },
+      dataZoom: [
+        { type: 'inside' },
+        {
+          type: 'slider',
+          height: 16,
+          bottom: 4,
+          borderColor: '#334155',
+          fillerColor: 'rgba(56, 189, 248, 0.2)',
+          textStyle: { color: '#9ca3af', fontSize: 10 },
+        },
+      ],
+      series: [
+        {
+          name: 'Aktivite İndeksi',
+          type: 'bar',
+          data: displaySeries.map((pt) => ({
+            value: pt.activityIndex,
+            periodLabel: pt.label,
+            anomalyLevel: pt.anomalyLevel,
+            source: pt.source,
+            itemStyle: {
+              color:
+                pt.anomalyLevel === 'VERY_HIGH'
+                  ? '#ef4444'
+                  : pt.anomalyLevel === 'HIGH'
+                  ? '#f97316'
+                  : '#38bdf8',
+            },
+          })),
+        },
+      ],
+    };
+  }, [chronologicalSeries, effectiveFilterYear]);
+
   // D4: Radyal Mevsimsellik Grafiği Ayarları
   const radialOption = useMemo<echarts.EChartsOption>(() => {
-    const activeRadialValues =
-      radialMetric === 'mean' ? monthlyStats.means : monthlyStats.medians;
+    const activeRadialValues = filteredSeasonality.map((m) =>
+      radialMetric === 'mean' ? m.meanActivity : m.medianActivity
+    );
     const maxRadialVal = Math.max(...activeRadialValues);
 
     return {
@@ -201,18 +274,20 @@ export default function AnalyticsPanel({
         formatter: (params: unknown) => {
           const p = params as { dataIndex?: number };
           const idx = p.dataIndex ?? 0;
+          const stat = filteredSeasonality[idx];
           return `
             <div>
-              <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">${MONTHS[idx]} (2000–2026)</div>
-              <div>Ortalama Aktivite: <b>${monthlyStats.means[idx]}</b></div>
-              <div>Medyan Aktivite: <b>${monthlyStats.medians[idx]}</b></div>
+              <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">${stat.fullName}</div>
+              <div>Ortalama Aktivite: <b>${stat.meanActivity}</b></div>
+              <div>Medyan Aktivite: <b>${stat.medianActivity}</b></div>
+              <div>Tarihsel Görülme Sıklığı: <b>%${stat.frequencyPercent}</b> (${stat.activeYears}/${stat.totalObservedYears} yıl)</div>
             </div>
           `;
         },
       },
       angleAxis: {
         type: 'category',
-        data: MONTHS,
+        data: MONTH_SHORT,
         axisLabel: { color: '#9ca3af', fontSize: 11 },
       },
       radiusAxis: {
@@ -234,7 +309,7 @@ export default function AnalyticsPanel({
         },
       ],
     };
-  }, [radialMetric, monthlyStats]);
+  }, [radialMetric, filteredSeasonality]);
 
   // D2: Z-Skoru Zaman Serisi (±5 aralığına kırpılmış, gerçek değer tooltip'te)
   const anomalyOption = useMemo<echarts.EChartsOption>(() => {
@@ -276,7 +351,7 @@ export default function AnalyticsPanel({
       grid: { top: 42, bottom: 48, left: 38, right: 16 },
       xAxis: {
         type: 'category',
-        data: filteredData.map((r) => `${MONTHS[r.month - 1]} ${r.year}`),
+        data: filteredData.map((r) => `${MONTH_SHORT[r.month - 1]} ${r.year}`),
         axisLabel: { color: '#9ca3af', fontSize: 10 },
       },
       yAxis: {
@@ -340,17 +415,25 @@ export default function AnalyticsPanel({
         formatter: (params: unknown) => {
           const p = params as { data?: HeatmapPoint };
           if (!p.data) return '';
-          const { year, month, inWindow, hasRecord, activityIndex, zScore, anomalyLevel } = p.data;
+          const {
+            year,
+            month,
+            inWindow,
+            hasRecord,
+            activityIndex,
+            zScore,
+            anomalyLevel,
+          } = p.data;
           if (!inWindow) {
-            return `<div><b>${MONTHS[month - 1]} ${year}</b><br/><span style="color:#94a3b8;">Gözlem penceresi dışı</span></div>`;
+            return `<div><b>${MONTH_SHORT[month - 1]} ${year}</b><br/><span style="color:#94a3b8;">Gözlem penceresi dışı</span></div>`;
           }
           if (!hasRecord) {
-            return `<div><b>${MONTHS[month - 1]} ${year}</b><br/>Aktivite İndeksi: <b>0</b> (Tespit yok)</div>`;
+            return `<div><b>${MONTH_SHORT[month - 1]} ${year}</b><br/>Aktivite İndeksi: <b>0</b> (Tespit yok)</div>`;
           }
           const zStr = zScore !== null ? zScore.toFixed(2) : 'Yok';
           return `
             <div>
-              <div style="font-weight:700;color:#fb923c;margin-bottom:3px;">${MONTHS[month - 1]} ${year}</div>
+              <div style="font-weight:700;color:#fb923c;margin-bottom:3px;">${MONTH_SHORT[month - 1]} ${year}</div>
               <div>Aktivite İndeksi: <b>${activityIndex.toFixed(1)}</b></div>
               <div>Anomali: <b>${anomalyLevel}</b> (Z: ${zStr})</div>
             </div>
@@ -360,7 +443,7 @@ export default function AnalyticsPanel({
       grid: { top: 38, bottom: 52, left: 44, right: 16 },
       xAxis: {
         type: 'category',
-        data: MONTHS,
+        data: MONTH_SHORT,
         axisLabel: { color: '#9ca3af', fontSize: 10 },
         splitArea: { show: false },
       },
@@ -473,6 +556,9 @@ export default function AnalyticsPanel({
         </div>
       )}
 
+      {/* E3 + E4 + E5: 12 Aylık Tarihsel Risk Takvimi ve Periyodiklik Özeti */}
+      {!loading && <RiskCalendarCard report={seasonalityReport} />}
+
       <div className="flex flex-wrap gap-2 text-xs">
         <select
           value={effectiveFilterYear}
@@ -501,6 +587,11 @@ export default function AnalyticsPanel({
 
       {/* Grafikler */}
       <div className="flex flex-col gap-6 mt-1">
+        {/* E2: 2000–2026 Tam Zaman Serisi Aktivite Grafiği */}
+        <div className="w-full h-[240px] shrink-0">
+          <EChartBox option={activityTimelineOption} />
+        </div>
+
         {/* D1: Yıl × Ay Isı Haritası */}
         <div className="w-full h-[360px] shrink-0">
           <EChartBox option={heatmapOption} />
