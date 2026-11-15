@@ -24,16 +24,16 @@ interface EmptyCellInfo {
 }
 
 const MONTH_NAMES = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 const ANOMALY_COLORS: Record<AnomalyLevel, string> = {
-  VERY_LOW: '#2563eb',
-  LOW: '#38bdf8',
-  NORMAL: '#94a3b8',
-  HIGH: '#f97316',
-  VERY_HIGH: '#ef4444',
+  VERY_LOW: '#4575b4',
+  LOW: '#91bfdb',
+  NORMAL: '#e2e8f0',
+  HIGH: '#fc8d59',
+  VERY_HIGH: '#d73027',
   INSUFFICIENT_DATA: '#64748b',
 };
 
@@ -45,7 +45,6 @@ function getActivityColor(val: number): string {
   return '#4c1d95';
 }
 
-// Görünmez 2°×2° tıklama/hover alanı (yuvarlak noktaların görünümünü bozmaz)
 const HITBOX_TILE_MATERIAL = new THREE.MeshBasicMaterial({
   colorWrite: false,
   depthWrite: false,
@@ -161,7 +160,7 @@ export function GlobeView({
           setLoadedState({
             year: selectedYear,
             rows: [],
-            error: err instanceof Error ? err.message : 'Veri yüklenemedi',
+            error: err instanceof Error ? err.message : 'Data could not be loaded',
           });
         }
       });
@@ -171,13 +170,11 @@ export function GlobeView({
     };
   }, [selectedYear]);
 
-  // Seçili ayın tüm kayıtları (tıklama araması için)
   const monthRows = useMemo(
     () => yearRows.filter((row) => row.month === selectedMonth),
     [yearRows, selectedMonth]
   );
 
-  // Kürede çizilecek aktif hücreler (INSUFFICIENT_DATA artık 2000–2003 için görünür)
   const activeCells = useMemo(() => {
     return monthRows.filter((row) => {
       if (!row.activity_index || row.activity_index <= 0) return false;
@@ -302,19 +299,19 @@ useEffect(() => {
 
   const getHitboxTileMaterial = useCallback(() => HITBOX_TILE_MATERIAL, []);
 
-  const getTileLabel = useCallback((d: object) => {
-    const r = d as FireGridRow;
-    const zText =
-      r.z_score !== null && r.z_score !== undefined ? r.z_score.toFixed(2) : 'Yok';
-    return `
-      <div style="background:#0f172a;border:1px solid #334155;padding:8px 10px;border-radius:6px;font-family:sans-serif;font-size:12px;color:#f8fafc;">
-        <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">Hücre: ${r.grid_id} (${r.lat}°, ${r.lon}°)</div>
-        <div>Aktivite İndeksi: <b>${r.activity_index?.toFixed(1)}</b></div>
-        <div>Anomali: <b>${r.anomaly_level}</b> (Z: ${zText})</div>
-        <div style="color:#94a3b8;font-size:11px;margin-top:2px;">Kaynak: ${r.source} • İncelemek için tıkla</div>
-      </div>
-    `;
-  }, []);
+const getTileLabel = useCallback((d: object) => {
+  const r = d as FireGridRow;
+  const zText =
+    r.z_score !== null && r.z_score !== undefined ? r.z_score.toFixed(2) : 'N/A';
+  return `
+    <div style="background:#0f172a;border:1px solid #334155;padding:8px 10px;border-radius:6px;font-family:sans-serif;font-size:12px;color:#f8fafc;">
+      <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">Cell: ${r.grid_id} (${r.lat}°, ${r.lon}°)</div>
+      <div>Activity Index: <b>${r.activity_index?.toFixed(1)}</b></div>
+      <div>Anomaly: <b>${r.anomaly_level.replace('_', ' ')}</b> (Z: ${zText})</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:2px;">Source: ${r.source} • Click to inspect</div>
+    </div>
+  `;
+}, []);
 
   const handleTileClick = useCallback(
     (tile: object) => {
@@ -357,7 +354,7 @@ useEffect(() => {
                 }`}
               >
                 <Activity className="h-3.5 w-3.5" />
-                Anomali Seviyesi
+                Anomaly Level
               </button>
               <button
                 onClick={() => setViewMode('activity')}
@@ -368,7 +365,7 @@ useEffect(() => {
                 }`}
               >
                 <Flame className="h-3.5 w-3.5" />
-                Aktivite İndeksi
+                Activity Index
               </button>
             </div>
 
@@ -380,26 +377,26 @@ useEffect(() => {
                     ? 'bg-slate-800/95 border-slate-600 text-slate-100'
                     : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
-                title="Mevsim normallerindeki (NORMAL) yangın hücrelerini göster/gizle"
+                title="Show/hide the seasonal (NORMAL) fire cells"
               >
                 {showNormalCells ? (
                   <Eye className="h-3.5 w-3.5 text-cyan-400" />
                 ) : (
                   <EyeOff className="h-3.5 w-3.5" />
                 )}
-                Normal Hücreler
+                Normal Cells
               </button>
             )}
           </div>
 
           <div className="rounded-lg bg-slate-900/90 px-3 py-1.5 text-xs border border-slate-800 backdrop-blur text-slate-300">
             {loading ? (
-              <span className="text-orange-400">Veri yükleniyor ({selectedYear})...</span>
+              <span className="text-orange-400">Data is loading  ({selectedYear})...</span>
             ) : error ? (
               <span className="text-red-400">{error}</span>
             ) : (
               <span>
-                Aktif Hücre:{' '}
+                Active Cell:{' '}
                 <strong className="text-white">
                   {activeCells.length.toLocaleString('tr-TR')}
                 </strong>{' '}
@@ -413,7 +410,7 @@ useEffect(() => {
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-900/85 px-2.5 py-1.5 border border-slate-800/90 backdrop-blur pointer-events-auto">
           <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400 mr-1">
             <Compass className="h-3.5 w-3.5" />
-            Hikâye Modu:
+            Story Cases:
           </span>
 
           {storyCases.map((story: StoryCase, idx: number) => {
@@ -443,10 +440,10 @@ useEffect(() => {
                 ? 'bg-emerald-600 text-white'
                 : 'bg-slate-800 text-slate-200 hover:bg-slate-700'
             }`}
-            title="Tüm vakaları otomatik sırayla gez"
+            title="Automatically navigate all cases"
           >
             {isAutoTour ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-            {isAutoTour ? 'Turu Durdur' : 'Otomatik Tur'}
+            {isAutoTour ? 'Stop Tour' : 'Automatic Tour'}
           </button>
         </div>
 
@@ -454,8 +451,8 @@ useEffect(() => {
         {emptyCellNotice && (
           <div className="self-start flex items-center gap-3 rounded-lg bg-slate-900/95 px-3 py-2 border border-cyan-500/40 backdrop-blur pointer-events-auto text-xs text-slate-200">
             <span>
-              Hücre <strong className="text-cyan-400">{emptyCellNotice.grid_id}</strong> ({emptyCellNotice.lat}°, {emptyCellNotice.lon}°):{' '}
-              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} döneminde kayıtlı yangın aktivitesi yok.
+              Cell <strong className="text-cyan-400">{emptyCellNotice.grid_id}</strong> ({emptyCellNotice.lat}°, {emptyCellNotice.lon}°):{' '}
+              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} no recorded fire activity during this period.
             </span>
             <button
               onClick={() => setEmptyCellNotice(null)}
@@ -480,7 +477,7 @@ useEffect(() => {
                 }}
                 className="text-[11px] text-slate-400 hover:text-white"
               >
-                Kapat ×
+                Close ×
               </button>
             </div>
             <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
@@ -545,9 +542,9 @@ useEffect(() => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-slate-400">Yıl Seçimi</span>
+              <span className="text-slate-400">Select Year</span>
               <span className="font-bold text-orange-400">
-                {selectedYear} {selectedYear === 2026 && '(Ekim 2026’ya kadar kısmi)'}
+                {selectedYear} {selectedYear === 2026 && '(Partial until October 2026’)'}
               </span>
             </div>
             <input
@@ -566,7 +563,7 @@ useEffect(() => {
 
           <div>
             <div className="flex justify-between text-xs mb-1">
-              <span className="text-slate-400">Ay Seçimi</span>
+              <span className="text-slate-400">Select Month</span>
               <span className="font-bold text-orange-400">
                 {MONTH_NAMES[selectedMonth - 1]} ({selectedMonth}/12)
               </span>
@@ -586,18 +583,18 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Lejant ve Bilimsel Uyarı */}
+        {/* Legend and Info */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400">
           {viewMode === 'anomaly' ? (
             <div className="flex flex-wrap items-center gap-3">
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" /> Çok Düşük</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#38bdf8]" /> Düşük</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#4575b4]" /> Very Low</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#91bfdb]" /> Low</span>
               {showNormalCells && (
-                <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#94a3b8]" /> Normal</span>
+                <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#e2e8f0]" /> Normal</span>
               )}
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#f97316]" /> Yüksek</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" /> Çok Yüksek</span>
-              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#64748b]" /> Yetersiz Tarihçe (2000–03)</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#fc8d59]" /> High</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#d73027]" /> Very High</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#64748b]" /> Insufficient History (2000–03)</span>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3">
@@ -611,7 +608,7 @@ useEffect(() => {
 
           <span className="flex items-center gap-1 text-slate-500">
             <Info className="h-3 w-3 shrink-0" />
-            Tarihsel aktivite göstergesidir; operasyonel erken uyarı/tahmin değildir.
+            Historical activity indicator; not an operational early warning or forecast.
           </span>
           <span className="flex items-start gap-1 text-amber-300/80">
             <Info className="h-3 w-3 shrink-0 mt-0.5" />

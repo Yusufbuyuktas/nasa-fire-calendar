@@ -174,7 +174,7 @@ export default function AnalyticsPanel({
     return {
       backgroundColor: 'transparent',
       title: {
-        text: 'Aktivite İndeksi Zaman Serisi (2000–2026)',
+        text: 'Activity Index Time Series (2000–2026)',
         textStyle: { color: '#f3f4f6', fontSize: 13 },
         top: 0,
       },
@@ -200,9 +200,9 @@ export default function AnalyticsPanel({
           return `
             <div>
               <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">${periodLabel}</div>
-              <div>Aktivite İndeksi: <b>${value}</b></div>
-              <div>Anomali: <b>${anomalyLevel}</b></div>
-              <div style="color:#94a3b8;font-size:11px;">Kaynak: ${source}</div>
+              <div>Activity Index: <b>${value}</b></div>
+              <div>Anomaly: <b>${anomalyLevel}</b></div>
+              <div style="color:#94a3b8;font-size:11px;">Resource: ${source}</div>
             </div>
           `;
         },
@@ -263,7 +263,7 @@ export default function AnalyticsPanel({
     return {
       backgroundColor: 'transparent',
       title: {
-        text: `Mevsimsellik (${radialMetric === 'mean' ? 'Sıfır Doldurmalı Ortalama' : 'Medyan'})`,
+        text: `Seasonality (${radialMetric === 'mean' ? 'Zero-Filled Mean' : 'Median'})`,
         textStyle: { color: '#f3f4f6', fontSize: 13 },
         top: 0,
       },
@@ -279,9 +279,9 @@ export default function AnalyticsPanel({
           return `
             <div>
               <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">${stat.fullName}</div>
-              <div>Ortalama Aktivite: <b>${stat.meanActivity}</b></div>
-              <div>Medyan Aktivite: <b>${stat.medianActivity}</b></div>
-              <div>Tarihsel Görülme Sıklığı: <b>%${stat.frequencyPercent}</b> (${stat.activeYears}/${stat.totalObservedYears} yıl)</div>
+              <div>Mean Activity: <b>${stat.meanActivity}</b></div>
+              <div>Meadian Activity: <b>${stat.medianActivity}</b></div>
+              <div>Historical Frequency of Occurrence: <b>%${stat.frequencyPercent}</b> (${stat.activeYears}/${stat.totalObservedYears} yıl)</div>
             </div>
           `;
         },
@@ -317,7 +317,7 @@ export default function AnalyticsPanel({
     return {
       backgroundColor: 'transparent',
       title: {
-        text: 'Anomali Göstergesi (Z-Skoru Zaman Serisi, ±5 Kırpmalı)',
+        text: 'Indicator of Anomaly (Z-Score time series, ±5 should be trimmed)',
         textStyle: { color: '#f3f4f6', fontSize: 13 },
         top: 0,
       },
@@ -338,13 +338,13 @@ export default function AnalyticsPanel({
           const { rawScore, anomalyLevel } = item.data;
           const scoreLabel =
             rawScore === null
-              ? 'Hesaplanmadı (Yetersiz tarihçe)'
-              : `${rawScore.toFixed(2)}${Math.abs(rawScore) > 5 ? ' (grafikte ±5 kırpıldı)' : ''}`;
+              ? 'Could not be calculated (nsufficient History)'
+              : `${rawScore.toFixed(2)}${Math.abs(rawScore) > 5 ? ' (±5 is trimmed from graphic.)' : ''}`;
           return `
             <div>
               <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">${item.name ?? ''}</div>
-              <div>Gerçek Z-Skoru: <b>${scoreLabel}</b></div>
-              <div>Seviye: <b>${anomalyLevel}</b></div>
+              <div>Real Z-Score: <b>${scoreLabel}</b></div>
+              <div>Level: <b>${anomalyLevel}</b></div>
             </div>
           `;
         },
@@ -404,7 +404,7 @@ export default function AnalyticsPanel({
     return {
       backgroundColor: 'transparent',
       title: {
-        text: 'Yangın Takvimi Isı Haritası (Yıl × Ay)',
+        text: 'Fire Calendar Heat Map (Year × Month)',
         textStyle: { color: '#f3f4f6', fontSize: 13 },
         top: 0,
       },
@@ -426,17 +426,17 @@ export default function AnalyticsPanel({
             anomalyLevel,
           } = p.data;
           if (!inWindow) {
-            return `<div><b>${MONTH_SHORT[month - 1]} ${year}</b><br/><span style="color:#94a3b8;">Gözlem penceresi dışı</span></div>`;
+            return `<div><b>${MONTH_SHORT[month - 1]} ${year}</b><br/><span style="color:#94a3b8;">Out of Observation Window</span></div>`;
           }
           if (!hasRecord) {
-            return `<div><b>${MONTH_SHORT[month - 1]} ${year}</b><br/>Aktivite İndeksi: <b>0</b> (Tespit yok)</div>`;
+            return `<div><b>${MONTH_SHORT[month - 1]} ${year}</b><br/>Activity Index: <b>0</b> (No detection)</div>`;
           }
           const zStr = zScore !== null ? zScore.toFixed(2) : 'Yok';
           return `
             <div>
               <div style="font-weight:700;color:#fb923c;margin-bottom:3px;">${MONTH_SHORT[month - 1]} ${year}</div>
-              <div>Aktivite İndeksi: <b>${activityIndex.toFixed(1)}</b></div>
-              <div>Anomali: <b>${anomalyLevel}</b> (Z: ${zStr})</div>
+              <div>Activity Index: <b>${activityIndex.toFixed(1)}</b></div>
+              <div>Anomaly: <b>${anomalyLevel}</b> (Z: ${zStr})</div>
             </div>
           `;
         },
@@ -469,7 +469,7 @@ export default function AnalyticsPanel({
       },
       series: [
         {
-          name: 'Aktivite İndeksi',
+          name: 'Activity Index',
           type: 'heatmap',
           data: calendarHeatmap.points as unknown as Array<{
             value: [number, number, number | '-'];
@@ -492,14 +492,13 @@ export default function AnalyticsPanel({
         </div>
         <div className="max-w-sm space-y-1.5">
           <h2 className="text-base font-semibold text-slate-100">
-            Bölgesel Zaman Serisi Analizi
+            Regional Time Series Analysis
           </h2>
           <p className="text-xs text-slate-400 leading-relaxed">
-            2000–2026 yılları arasındaki yangın takvimini, mevsimsellik döngüsünü
-            ve anomali geçmişini incelemek için sol taraftaki 3B küreden bir{' '}
-            <strong className="text-slate-200">2°×2° hücreye</strong> tıklayın
-            veya üstteki <strong className="text-orange-300">Hikâye Modu</strong>{' '}
-            vakalarından birini seçin.
+          To examine the fire calendar, seasonality cycle, and anomaly history between 2000-2026, click on a{' '}
+          <strong className="text-slate-200">2°×2° cell</strong> from the 3D globe on the left
+          or select one of the <strong className="text-orange-300">Case Mode</strong>{' '}
+          incidents above.
           </p>
         </div>
       </div>
@@ -511,34 +510,34 @@ export default function AnalyticsPanel({
       <div className="flex items-center justify-between border-b border-gray-800 pb-3">
         <div>
           <h2 className="text-lg font-semibold">
-            Bölge Analizi {selectedCell ? `— ${selectedCell.grid_id}` : ''}
+            Region Analysis {selectedCell ? `— ${selectedCell.grid_id}` : ''}
           </h2>
           <p className="text-xs text-gray-400">
             {loading
-              ? '2000–2026 zaman serisi yükleniyor...'
-              : `${selectedCellData.length} aktif ay kaydı (Kas 2000 – Eki 2026)`}
+              ? 'Data series of 2000–2026 is loading...'
+              : `${selectedCellData.length} active month record (Now 2000 – Oct 2026)`}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
           {filteredData.length !== selectedCellData.length && (
             <button
-              onClick={() => downloadRegionSummaryCsv(filteredData, `${regionTitle}-filtreli`)}
+              onClick={() => downloadRegionSummaryCsv(filteredData, `${regionTitle}-filtered`)}
               disabled={loading || filteredData.length === 0}
               className="flex items-center gap-1 px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs font-medium rounded-lg border border-slate-700 transition cursor-pointer"
-              title="Yalnızca filtrelenen satırları indir"
+              title="Download only the filtered rows"
             >
               <Download className="h-3.5 w-3.5" />
-              Filtreli ({filteredData.length})
+              Filtered ({filteredData.length})
             </button>
           )}
           <button
             onClick={() => downloadRegionSummaryCsv(selectedCellData, `${regionTitle}-2000-2026`)}
             disabled={loading || selectedCellData.length === 0}
             className="flex items-center gap-1 px-3 py-1.5 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 text-xs font-medium rounded-lg transition cursor-pointer"
-            title="Hücrenin 2000–2026 tüm geçmişini CSV olarak indir"
+            title="Download the entire history of the cell 2000–2026 as CSV"
           >
             <Download className="h-3.5 w-3.5" />
-            Tam Geçmiş CSV
+            All Past CSV
           </button>
         </div>
       </div>
@@ -546,7 +545,7 @@ export default function AnalyticsPanel({
       {loading && (
         <div className="flex items-center gap-2 rounded-lg bg-slate-800/80 border border-slate-700 px-3 py-2 text-xs text-orange-300">
           <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-          Hücrenin tüm geçmiş yılları (2000–2026) yükleniyor...
+          All the past years of the cell (2000–2026) are loading...
         </div>
       )}
 
@@ -566,10 +565,10 @@ export default function AnalyticsPanel({
           onChange={(e) => setFilterYear(e.target.value)}
           className="bg-gray-800 border border-gray-700 text-gray-200 rounded px-2 py-1.5 flex-1 outline-none focus:border-orange-500"
         >
-          <option value="all">Tüm Yıllar ({availableYears.length} aktif yıl)</option>
+          <option value="all">All years ({availableYears.length} are active year.)</option>
           {availableYears.map((y) => (
             <option key={y} value={String(y)}>
-              Sadece {y}
+              Only {y}
             </option>
           ))}
         </select>
@@ -579,10 +578,10 @@ export default function AnalyticsPanel({
           onChange={(e) => setFilterAnomaly(e.target.value)}
           className="bg-gray-800 border border-gray-700 text-gray-200 rounded px-2 py-1.5 flex-1 outline-none focus:border-orange-500"
         >
-          <option value="all">Tüm Anomali Seviyeleri</option>
-          <option value="high_plus">Yüksek + Çok Yüksek</option>
-          <option value="very_high">Yalnızca Çok Yüksek</option>
-          <option value="low_minus">Düşük + Çok Düşük</option>
+          <option value="all">All Anomaly Levels</option>
+          <option value="high_plus">High + Very High</option>
+          <option value="very_high">Only Very High</option>
+          <option value="low_minus">Low + Very Low</option>
         </select>
       </div>
 
@@ -609,7 +608,7 @@ export default function AnalyticsPanel({
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Ortalama
+              Mean
             </button>
             <button
               onClick={() => setRadialMetric('median')}
@@ -619,7 +618,7 @@ export default function AnalyticsPanel({
                   : 'bg-slate-800 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Medyan
+              Median
             </button>
           </div>
           <div className="w-full h-[250px]">
@@ -635,7 +634,7 @@ export default function AnalyticsPanel({
 
       {/* E-Posta Simülasyonu */}
       <div className="shrink-0 mt-2">
-        <EmailAlertSimulation regionTitle={regionTitle} />
+        <EmailAlertSimulation regionTitle={regionTitle} selectedCellData={filteredData} />
       </div>
       {/* İtfaiye İstasyonları */}
       {selectedCell && (
