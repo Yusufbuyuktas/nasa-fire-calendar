@@ -140,3 +140,40 @@ x = \ln(1 + \text{activity_index})
 ### 6.2 LOYO Reference
 
 For a target observation, the reference distribution excludes the target year
+### 6.6 Anomaly Classification
+
+Anomaly levels are assigned according to the calculated LOYO Z-score.
+
+| Z-score condition | Classification |
+|---|---|
+| \(z \geq 2\) | `VERY_HIGH` |
+| \(1 \leq z < 2\) | `HIGH` |
+| \(-1 < z < 1\) | `NORMAL` |
+| \(-2 < z \leq -1\) | `LOW` |
+| \(z \leq -2\) | `VERY_LOW` |
+| Insufficient reference observations | `INSUFFICIENT_DATA` |
+| Imputed zero without verified observation | `UNVERIFIED_ZERO` |
+
+These categories describe statistical deviations from the available positive-detection reference distribution. They do not directly classify wildfire severity or emergency risk.
+
+### 6.7 Historical Sample Confidence
+
+The pipeline assigns a confidence label based on the number of reference observations available after excluding the target year.
+
+| Historical reference observations | Confidence label |
+|---|---|
+| Fewer than 3 | `INSUFFICIENT` |
+| 3–9 | `LOW` |
+| 10–19 | `MEDIUM` |
+| 20 or more | `HIGH` |
+| Imputed `NO_DETECTION` record | `UNVERIFIED` |
+
+These labels represent historical sample availability, not statistically calibrated prediction confidence.
+
+### 6.8 Retrospective Interpretation
+
+The Leave-One-Year-Out method excludes the target year but can use observations from both earlier and later years.
+
+Therefore, the calculated anomaly scores are retrospective historical comparisons rather than strictly forward-looking predictions.
+
+Operational real-time anomaly detection would require a separate historical reference strategy that uses only information available before the evaluation date.
