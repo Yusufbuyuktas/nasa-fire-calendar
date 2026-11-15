@@ -1,179 +1,142 @@
-﻿# Scientific Methodology
+﻿# Methodology: Harmonized MODIS–VIIRS Fire Activity Calendar
 
-## Harmonization of MODIS and VIIRS Active Fire Hotspots
+## 1. Project Overview
 
-### 1. Project Overview
+This project develops a historical fire activity calendar using active fire hotspot detections from NASA FIRMS.
 
-This project develops a web-based fire activity calendar using harmonized MODIS and VIIRS active fire hotspot observations.
+The objective is to provide a consistent analytical view of detected burning activity across multiple satellite sensors, while highlighting temporal patterns, anomalies, and limitations in data coverage.
 
-The goal is to support the exploration of historical fire activity, seasonal patterns, and unusual conditions across geographic regions.
+The resulting activity index represents a calibrated measure of hotspot detections. It does not directly represent burned area, fire severity, or the number of individual fire incidents.
 
-The resulting activity index represents satellite-detected active fire hotspots, not burned area, fire severity, or the probability of a wildfire.
+## 2. Data Sources
 
-### 2. Data Sources
+The processing pipeline incorporates the following satellite products:
 
-The processing pipeline incorporates three satellite sensor records:
+- **MODIS Collection 6.1:** Terra and Aqua active fire detections.
+- **VIIRS NOAA-20:** 375 m active fire detections.
+- **VIIRS NOAA-21:** 375 m active fire detections.
 
-| Sensor | Data coverage in this project |
+Both archive and near-real-time (NRT) records are processed.
+
+The available MODIS data begins in 2000, NOAA-20 in 2018, and NOAA-21 in 2023. Their temporal coverage is not identical.
+
+### Geographic Coverage
+
+The processed dataset has the following observed coordinate bounds:
+
+| Coordinate | Minimum | Maximum |
+|---|---:|---:|
+| Latitude | −57.79982 | 38.90000 |
+| Longitude | −120.60001 | 179.99673 |
+
+These bounds describe the observed dataset and must not be interpreted as complete global coverage.
+
+## 3. Monthly Spatial Aggregation
+
+Individual hotspot detections are aggregated by:
+
+- Spatial grid identifier
+- Year
+- Month
+- Satellite sensor
+
+For each grid-month-sensor combination, the pipeline calculates the number of detected hotspots.
+
+This produces `monthly_activity.csv`, which is used as the input to the harmonization process.
+
+The spatial grid identifier is preserved across processing stages to support consistent geographic comparisons.
+
+## 4. Sensor Harmonization
+
+MODIS and VIIRS have different detection characteristics and spatial resolutions. Their raw hotspot counts are therefore not assumed to be directly interchangeable.
+
+### 4.1 Calibration Periods
+
+Monthly calibration factors are estimated using overlapping observations:
+
+| Sensor | Calibration years |
 |---|---|
-| MODIS | 2000–2026 |
-| VIIRS NOAA-20 | 2018–2026 |
-| VIIRS NOAA-21 | 2023–2026 |
+| VIIRS NOAA-20 | 2018–2025 |
+| VIIRS NOAA-21 | 2023–2025 |
 
-Approximately **312.9 million hotspot records** were processed.
+Only grid-month observations containing positive hotspot counts from both MODIS and the corresponding VIIRS sensor are used to calculate calibration factors.
 
-The records are normalized into a common schema containing geographic coordinates, observation date, sensor identifier, and fire radiative power (FRP) where available.
-
-### 3. Spatial and Temporal Aggregation
-
-Individual hotspot detections are aggregated into:
-
-- A 2° × 2° geographic grid within the available NASA FIRMS download region.
-- Monthly observation periods.
-- Separate hotspot counts for each sensor.
-
-The aggregation produces approximately 828,000 sensor-specific grid-month records.
-
-Grid coordinates displayed in the application represent grid centers rather than the exact positions of individual fire detections.
-
-### 4. Sensor Harmonization
-
-MODIS and VIIRS have different detection characteristics. Their raw hotspot counts therefore cannot be treated as directly interchangeable.
-
-We estimate sensor-specific monthly calibration factors using grid-month observations where both MODIS and the corresponding VIIRS sensor report positive hotspot counts.
+### 4.2 Calibration Formula
 
 For each calendar month and VIIRS sensor:
 
-**Calibration factor = Sum of VIIRS hotspot counts / Sum of MODIS hotspot counts**
+\[
+F_{m,s} =
+\frac{\sum_{i \in P_{m,s}} V_{i,s}}
+{\sum_{i \in P_{m,s}} M_i}
+\]
 
-The calibrated VIIRS activity is calculated as:
+Where:
 
-**Adjusted VIIRS activity = VIIRS hotspot count / Calibration factor**
+- \(F_{m,s}\) is the calibration factor for calendar month \(m\) and VIIRS sensor \(s\).
+- \(P_{m,s}\) is the set of matched positive grid-month observations.
+- \(V_{i,s}\) is the VIIRS hotspot count.
+- \(M_i\) is the corresponding MODIS hotspot count.
 
-The harmonized series uses the following source priority:
+Adjusted VIIRS activity is calculated as:
+
+\[
+V_{\text{adjusted}} = \frac{V_{\text{raw}}}{F_{m,s}}
+\]
+
+This calibration targets aggregate count comparability within matched observations. It does not guarantee equal medians, identical distributions, or equivalent detection probabilities.
+
+### 4.3 Sensor Selection
+
+For each grid-month, the harmonization pipeline selects activity in the following order:
 
 1. MODIS, when available.
-2. Adjusted VIIRS NOAA-20.
-3. Adjusted VIIRS NOAA-21.
+2. Calibrated VIIRS NOAA-20, when MODIS is unavailable.
+3. Calibrated VIIRS NOAA-21, when neither preceding source is available.
 
-This produces a MODIS-referenced activity index across the available observation period.
+The selected sensor is recorded in the `source` field.
 
-The calibration is based on positive matched observations and does not establish equivalence in detection coverage, burned area, or fire intensity.
+The harmonized output is stored in `harmonized_activity.csv`.
 
-### 5. Historical Anomaly Detection
+## 5. Missing-Month Handling
 
-For each geographic grid and calendar month, the anomaly model compares current activity against observations from preceding years.
+The source FIRMS records contain positive hotspot detections, but do not independently establish whether every grid-month was successfully observed.
 
-The historical reference excludes the year being evaluated, preventing the current observation from contributing to its own baseline.
+For continuity analysis, the pipeline generates `harmonized_activity_filled.csv`.
 
-The anomaly score is calculated using:
+Within each grid's first and last detected hotspot months, missing monthly records are inserted with:
 
-**Z-score = (Current activity − Historical mean) / Historical standard deviation**
+- `activity_index = 0`
+- `source = NO_DETECTION`
 
-A valid anomaly score requires at least three preceding positive activity observations and a nonzero historical standard deviation.
+**These zeros are processing assumptions, not independently verified observations of zero fire activity.**
 
-| Z-score | Classification |
-|---|---|
-| ≥ 2 | VERY_HIGH |
-| ≥ 1 and below 2 | HIGH |
-| Above −1 and below 1 | NORMAL |
-| ≤ −1 and above −2 | LOW |
-| ≤ −2 | VERY_LOW |
-| Insufficient historical information | INSUFFICIENT_DATA |
+A missing hotspot record could also result from satellite coverage limitations, observation conditions, or other data availability constraints.
 
-A separate historical sample-size indicator is provided:
+Therefore, imputed zeros must not be treated as confirmed absence of burning.
 
-| Previous observations | Confidence label |
-|---|---|
-| Fewer than 3 | INSUFFICIENT |
-| 3–9 | LOW |
-| 10–19 | MEDIUM |
-| 20 or more | HIGH |
+The filled dataset contains:
 
-These confidence labels indicate the quantity of historical observations, not calibrated statistical confidence or prediction certainty.
+| Record category | Count |
+|---|---:|
+| Original harmonized records | 566,355 |
+| Imputed `NO_DETECTION` records | 256,373 |
+| Total filled records | 822,728 |
 
-### 6. Validation Results
+## 6. Anomaly Detection
 
-#### 6.1 Anomaly Data Integrity
+The anomaly analysis uses a Leave-One-Year-Out (LOYO) reference strategy.
 
-The processed dataset contains **566,355 grid-month records**.
+Each grid and calendar month is evaluated against available observations from other years for the same grid and calendar month.
 
-- 475,547 records have a calculated anomaly score.
-- 90,808 records are classified as having insufficient information.
-- No invalid dates, invalid history counts, nonfinite anomaly scores, inconsistent anomaly labels, or duplicate grid-month groups were detected by the implemented validation checks.
+### 6.1 Log Transformation
 
-#### 6.2 Sensor Agreement
+To reduce the influence of highly skewed hotspot counts, the pipeline applies:
 
-An in-sample comparison between calibrated VIIRS observations and MODIS measurements produced:
+\[
+x = \ln(1 + \text{activity_index})
+\]
 
-| Sensor | Matched observations | WAPE |
-|---|---:|---:|
-| VIIRS NOAA-20 | 154,059 | 25.07% |
-| VIIRS NOAA-21 | 56,726 | 24.73% |
+### 6.2 LOYO Reference
 
-These results measure agreement with MODIS on positive matched grid-month observations. They are not independent test-set accuracy estimates.
-
-A separate 2025 holdout evaluation, using calibration information from preceding years, produced approximately **28% WAPE**.
-
-#### 6.3 Sensor Transition Analysis
-
-Two types of sensor transition comparisons were conducted.
-
-**Consecutive-month comparison**
-
-- Same-source mean absolute log change: 0.9219
-- Source-switch mean absolute log change: 0.8884
-
-**Same-calendar-month, consecutive-year comparison**
-
-- Same-source mean absolute log change: 0.7789
-- Source-switch mean absolute log change: 0.8776
-
-The second comparison shows approximately 12.7% higher mean absolute log change among source-switch observations.
-
-This association does not establish that sensor switching caused the additional variability. Differences in geography, observation availability, and actual fire activity may contribute.
-
-### 7. Scientific Limitations
-
-Several limitations must be considered when interpreting the results.
-
-**Geographic coverage:** The NASA FIRMS source files were downloaded using the bounding box west -120.6°, south -57.8°, east 180°, and north 38.9°. The dataset does not provide global coverage. The bounding box describes the requested download region, not verified complete observation coverage within that region.
-
-**Unobserved regions:** Areas outside the downloaded region cannot be evaluated using this dataset. Missing hotspot records, including those within the downloaded region, must not be interpreted as confirmed zero-fire conditions or complete satellite observations.
-
-**Positive-observation sampling:** Missing hotspot records cannot automatically be interpreted as observed zero-fire conditions.
-
-**Sensor detection differences:** MODIS and VIIRS have different spatial resolutions and detection characteristics. Monthly count calibration does not remove every source of measurement bias.
-
-**Temporal coverage:** The sensors cover different periods. The 2026 observation record is incomplete.
-
-**Spatial resolution:** Aggregation to 2° × 2° cells supports regional exploration within the available data coverage but is too coarse for precise local incident mapping.
-
-**Anomaly interpretation:** Z-scores describe deviations from historical positive recorded activity. They are not wildfire forecasts or emergency alerts by themselves.
-
-**Calibration stability:** Sensor agreement can change over time, and source transitions may introduce additional uncertainty.
-
-### 8. Reproducibility
-
-The processing and validation scripts are maintained in the project's `pipeline/` directory.
-
-Core scripts include:
-
-- `clean.py`
-- `aggregate.py`
-- `harmonize.py`
-- `anomalies_v2.py`
-- `export_frontend.py`
-- `split_frontend.py`
-- `validate_anomalies_v2.py`
-- `sensor_overlap_validation.py`
-- `sensor_transition_validation.py`
-- `sensor_transition_yearly.py`
-
-The frontend uses yearly CSV files containing harmonized activity, anomaly classifications, historical observation counts, and data-confidence labels.
-
-### 9. Conclusion
-
-This project provides a reproducible approach for combining MODIS and VIIRS active fire hotspot observations into a historical fire activity calendar.
-
-The methodology supports exploratory comparisons of seasonal activity and historical anomalies while explicitly communicating uncertainty, incomplete coverage, and limitations of satellite hotspot observations
+For a target observation, the reference distribution excludes the target year
