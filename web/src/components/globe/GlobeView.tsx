@@ -61,6 +61,22 @@ function coordsToGridCell(lat: number, lng: number): EmptyCellInfo {
   };
 }
 
+function toCleanFireRow(raw: FireGridRow): FireGridRow {
+  return {
+    grid_id: raw.grid_id,
+    lat: raw.lat,
+    lon: raw.lon,
+    year: raw.year,
+    month: raw.month,
+    activity_index: raw.activity_index,
+    z_score: raw.z_score ?? null,
+    anomaly_level: raw.anomaly_level,
+    source: raw.source,
+    history_count: raw.history_count,
+    confidence_level: raw.confidence_level,
+  };
+}
+
 export function GlobeView({
   selectedCell,
   onSelectCell,
@@ -198,10 +214,10 @@ export function GlobeView({
       }
     }
 
-    if (closestRow && minDist <= 8) {
-      setEmptyCellNotice(null);
-      onSelectCell(closestRow);
-    }
+   if (closestRow && minDist <= 8) {
+  setEmptyCellNotice(null);
+  onSelectCell(toCleanFireRow(closestRow));
+}
     pendingStoryRef.current = null;
   }, [activeCells, selectedYear, selectedMonth, onSelectCell]);
 
