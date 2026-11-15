@@ -5,6 +5,7 @@ import type { FireDataRow } from '../../types/fireData';
 import { downloadRegionSummaryCsv } from '../../services/csvExport';
 import EChartBox from './EChartBox';
 import EmailAlertSimulation from './EmailAlertSimulation';
+import FireStationsPanel from './FireStationsPanel';
 
 interface AnalyticsPanelProps {
   selectedCell?: FireDataRow | null;
@@ -545,6 +546,10 @@ export default function AnalyticsPanel({
       <div className="shrink-0 mt-2">
         <EmailAlertSimulation regionTitle={regionTitle} />
       </div>
+      {/* İtfaiye İstasyonları */}
+      {selectedCell && (
+        <FireStationsPanel cellLat={selectedCell.lat} cellLon={selectedCell.lon} />
+      )}
     </div>
   );
 }
