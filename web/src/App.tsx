@@ -24,13 +24,13 @@ export default function App() {
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
           <h1 className="text-sm font-bold tracking-wide">
-            NASA FIRMS — Küresel Yangın Aktivitesi Takvimi
+            NASA FIRMS — Global Fire Activity Calendar
           </h1>
         </div>
         <span className="text-xs text-slate-400">
           {selectedCell
-            ? `Seçili Hücre: ${selectedCell.grid_id} (${selectedCell.lat}°, ${selectedCell.lon}°)`
-            : 'İncelemek için küreden bir 2°×2° hücre seçin'}
+            ? `Selected Cell: ${selectedCell.grid_id} (${selectedCell.lat}°, ${selectedCell.lon}°)`
+            : 'Select a 2°×2° cell from the sphere for examination'}
         </span>
       </header>
 

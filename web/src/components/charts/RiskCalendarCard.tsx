@@ -13,22 +13,22 @@ const RISK_TIER_STYLES: Record<
   { label: string; badgeClass: string; cardClass: string }
 > = {
   CRITICAL: {
-    label: 'Kritik',
+    label: 'Critical',
     badgeClass: 'bg-red-500/20 text-red-300 border-red-500/40',
     cardClass: 'border-red-500/40 bg-red-950/20',
   },
   HIGH: {
-    label: 'Yüksek',
+    label: 'High',
     badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
     cardClass: 'border-orange-500/35 bg-orange-950/15',
   },
   MODERATE: {
-    label: 'Orta',
+    label: 'Moderate',
     badgeClass: 'bg-amber-500/20 text-amber-300 border-amber-500/35',
     cardClass: 'border-amber-500/25 bg-slate-900/80',
   },
   LOW: {
-    label: 'Düşük',
+    label: 'Low',
     badgeClass: 'bg-slate-700/50 text-slate-300 border-slate-600/40',
     cardClass: 'border-slate-800 bg-slate-900/50',
   },
@@ -37,21 +37,21 @@ const RISK_TIER_STYLES: Record<
 export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 flex flex-col gap-3.5">
-      {/* Başlık ve Özet Metrikler */}
+      {/* Title and Summary Metrics */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <Calendar className="h-4 w-4 text-orange-400" />
           <h3 className="text-sm font-semibold text-slate-100">
-            12 Aylık Tarihsel Risk Takvimi & Periyodiklik
+            12-Month Historical Risk Calendar & Periodicity
           </h3>
         </div>
         <span className="text-[11px] text-slate-400">
-          {report.activeYearCount}/26 aktif yıl • {report.totalActiveMonths}/
-          {report.totalObservedMonths} aktif ay
+          {report.activeYearCount}/26 active years • {report.totalActiveMonths}/
+          {report.totalObservedMonths} active months
         </span>
       </div>
 
-      {/* E4: Otomatik Türkçe Periyodiklik Yorumu */}
+      {/* Automatic Periodicity Summary */}
       <div
         className={`rounded-lg border p-2.5 text-xs leading-relaxed flex items-start gap-2 ${
           report.hasSufficientHistory
@@ -67,16 +67,16 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
         <p>{report.summaryText}</p>
       </div>
 
-      {/* Periyodiklik İstatistik Şeridi */}
+      {/* Periodicity Statistics Bar */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-2 py-1.5">
-          <div className="text-[10px] text-slate-400">Mevsimsel Odaklanma</div>
+          <div className="text-[10px] text-slate-400">Seasonal Concentration</div>
           <div className="text-xs font-bold text-slate-100 mt-0.5">
-            %{Math.round(report.seasonalConcentration * 100)}
+            {Math.round(report.seasonalConcentration * 100)}%
           </div>
         </div>
         <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-2 py-1.5">
-          <div className="text-[10px] text-slate-400">Yıllık Döngü (Lag-12)</div>
+          <div className="text-[10px] text-slate-400">Annual Cycle (Lag-12)</div>
           <div className="text-xs font-bold text-slate-100 mt-0.5">
             {report.lag12Autocorrelation !== null
               ? `r = ${report.lag12Autocorrelation.toFixed(2)}`
@@ -84,7 +84,7 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
           </div>
         </div>
         <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-2 py-1.5">
-          <div className="text-[10px] text-slate-400">2 Yıllık Döngü (Lag-24)</div>
+          <div className="text-[10px] text-slate-400">2-Year Cycle (Lag-24)</div>
           <div className="text-xs font-bold text-slate-100 mt-0.5">
             {report.lag24Autocorrelation !== null
               ? `r = ${report.lag24Autocorrelation.toFixed(2)}`
@@ -93,7 +93,7 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
         </div>
       </div>
 
-      {/* E3: 12 Aylık Risk Takvimi Izgarası */}
+      {/* 12-Month Risk Calendar Grid */}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {report.monthlyStats.map((stat) => {
           const style = RISK_TIER_STYLES[stat.riskTier];
@@ -101,7 +101,7 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
             <div
               key={stat.month}
               className={`rounded-lg border p-2 flex flex-col gap-1 transition ${style.cardClass}`}
-              title={`${stat.fullName}: ${stat.activeYears}/${stat.totalObservedYears} yılda aktif (%${stat.frequencyPercent}), Ortalama Aktivite: ${stat.meanActivity}, Yüksek Anomali: ${stat.highAnomalyCount} yıl`}
+              title={`${stat.fullName}: Active in ${stat.activeYears}/${stat.totalObservedYears} years (${stat.frequencyPercent}%), Mean Activity: ${stat.meanActivity}, High Anomaly: ${stat.highAnomalyCount} years`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-xs font-bold text-slate-100">
@@ -116,7 +116,7 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
 
               <div className="flex items-baseline justify-between mt-0.5">
                 <span className="text-sm font-bold text-white">
-                  %{stat.frequencyPercent}
+                  {stat.frequencyPercent}%
                 </span>
                 <span className="text-[10px] text-slate-400">
                   {stat.activeYears}/{stat.totalObservedYears}y
@@ -131,21 +131,18 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
               </div>
 
               <div className="text-[10px] text-slate-400 truncate">
-                Ort: <strong className="text-slate-200">{stat.meanActivity}</strong>
+                Avg: <strong className="text-slate-200">{stat.meanActivity}</strong>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* E5: Bilimsel Sorumluluk & Sensör Geçişi Notu */}
+      {/* Scientific Disclaimer & Sensor Transition Note */}
       <div className="flex items-start gap-1.5 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 leading-snug">
         <Info className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
         <span>
-          <strong>Metodoloji & Sorumluluk Notu:</strong> Sıklık yüzdeleri Kasım
-          2000 – Ekim 2026 arasındaki tarihsel tekrar oranını gösterir; gelecekteki
-          yangınlar için operasyonel tahmin değildir. 2000–2017 dönemi MODIS,
-          2018 sonrası ise uyumlaştırılmış MODIS+VIIRS kayıtlarını içerir.
+          <strong>Methodology & Disclaimer:</strong> Frequency percentages indicate the historical recurrence rate between November 2000 and October 2026; they are not an operational forecast for future fires. The 2000–2017 period uses MODIS, while post-2018 includes harmonized MODIS+VIIRS records.
         </span>
       </div>
     </section>

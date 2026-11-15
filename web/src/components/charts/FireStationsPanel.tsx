@@ -12,9 +12,8 @@ interface FireStationsPanelProps {
   cellLon: number;
 }
 
-// İki koordinat arası mesafeyi (km) hesaplayan Haversine Formülü
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Dünya yarıçapı (km)
+  const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
   const dLon = (lon2 - lon1) * (Math.PI / 180);
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -28,7 +27,6 @@ export default function FireStationsPanel({ cellLat, cellLon }: FireStationsPane
   const [nearestStations, setNearestStations] = useState<(Station & { distance: number })[]>([]);
 
   useEffect(() => {
-    // Dalga 3'te oluşturduğumuz statik JSON'u çekiyoruz
     fetch('/data/fire_stations.json')
       .then(res => res.json())
       .then((stations: Station[]) => {
@@ -37,19 +35,18 @@ export default function FireStationsPanel({ cellLat, cellLon }: FireStationsPane
           distance: getDistance(cellLat, cellLon, s.lat, s.lon)
         }));
         
-        // Mesafeye göre küçükten büyüğe sırala ve ilk 3'ü al
         distances.sort((a, b) => a.distance - b.distance);
         setNearestStations(distances.slice(0, 3));
       })
-      .catch(err => console.error("İtfaiye verisi okunamadı:", err));
+      .catch(err => console.error("Firefighter data could not read:", err));
   }, [cellLat, cellLon]);
 
   return (
     <div className="bg-gray-900/95 text-white p-4 rounded-xl border border-gray-800 mt-2 shrink-0">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-md font-semibold text-orange-500">En Yakın İtfaiye İstasyonları</h3>
+        <h3 className="text-md font-semibold text-orange-500">The Closest Fire Stations</h3>
         <span className="bg-orange-900/50 text-orange-300 text-[10px] px-2 py-0.5 rounded border border-orange-700/50">
-          Örnek Veri
+          Sample Data
         </span>
       </div>
       <div className="flex flex-col gap-2">
@@ -60,7 +57,7 @@ export default function FireStationsPanel({ cellLat, cellLon }: FireStationsPane
           </div>
         ))}
         {nearestStations.length === 0 && (
-          <div className="text-xs text-gray-500">İstasyon verisi yükleniyor...</div>
+          <div className="text-xs text-gray-500">Fire Station data is loading...</div>
         )}
       </div>
     </div>
