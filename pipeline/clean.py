@@ -1,11 +1,21 @@
 
+import os
 from pathlib import Path
 import pandas as pd
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-RAW_DIR = BASE_DIR / "data" / "raw"
-OUTPUT_DIR = BASE_DIR / "data" / "processed"
+RAW_DIR = Path(
+    os.environ.get(
+        "PIPELINE_RAW_DIR",
+        str(BASE_DIR / "data" / "raw")
+    )
+)
+OUTPUT_DIR = Path(
+    os.environ.get(
+        "PIPELINE_OUTPUT_DIR",
+        str(BASE_DIR / "data" / "processed")
+    )
+)
 
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 

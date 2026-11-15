@@ -1,9 +1,16 @@
 
+import os
 from pathlib import Path
 import duckdb
 
 BASE = Path(__file__).resolve().parent.parent
-DATA = BASE / "data" / "processed"
+
+DATA = Path(
+    os.environ.get(
+        "PIPELINE_OUTPUT_DIR",
+        str(BASE / "data" / "processed")
+    )
+)
 
 SOURCE = DATA / "monthly_activity.csv"
 OUTPUT = DATA / "harmonized_activity.csv"
