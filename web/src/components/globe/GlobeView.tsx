@@ -34,18 +34,20 @@ function getActivityColor(val: number): string {
   return '#4c1d95';
 }
 
-const initialYearCache: Record<number, FireGridRow[]> = {};
-const loadingPromises: Record<number, Promise<FireGridRow[]>> = {};
+const initialYearCache: Record<number, FireGridRow[] | undefined> = {};
+const loadingPromises = new Map<number, Promise<FireGridRow[]>>();
 
 function fetchAndCacheYear(year: number): Promise<FireGridRow[]> {
-  if (initialYearCache[year]) {
-    return Promise.resolve(initialYearCache[year]);
+  const cached = initialYearCache[year];
+  if (cached) {
+    return Promise.resolve(cached);
   }
-  if (loadingPromises[year]) {
-    return loadingPromises[year];
+  const existingPromise = loadingPromises.get(year);
+  if (existingPromise) {
+    return existingPromise;
   }
 
-  loadingPromises[year] = fetch(`/data/${year}.csv`)
+  const requestPromise = fetch(`/data/${year}.csv`)
     .then((res) => {
       if (!res.ok) throw new Error(`${year}.csv bulunamadı (${res.status})`);
       return res.text();
@@ -66,18 +68,19 @@ function fetchAndCacheYear(year: number): Promise<FireGridRow[]> {
                   typeof r.month === 'number'
               );
               initialYearCache[year] = cleanRows;
-              delete loadingPromises[year];
+              loadingPromises.delete(year);
               resolve(cleanRows);
             },
           });
         })
     )
     .catch((err) => {
-      delete loadingPromises[year];
+      loadingPromises.delete(year);
       throw err;
     });
 
-  return loadingPromises[year];
+  loadingPromises.set(year, requestPromise);
+  return requestPromise;
 }
 
 export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
@@ -90,9 +93,21 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
   const [selectedYear, setSelectedYear] = useState<number>(2025);
   const [selectedMonth, setSelectedMonth] = useState<number>(8);
   const [viewMode, setViewMode] = useState<ViewMode>('anomaly');
-  const [yearRows, setYearRows] = useState<FireGridRow[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const [loadedState, setLoadedState] = useState<{
+    year: number | null;
+    rows: FireGridRow[];
+    error: string | null;
+  }>({ year: null, rows: [], error: null });
+
+  const cachedRows = initialYearCache[selectedYear];
+  const isCurrentYearLoaded = loadedState.year === selectedYear;
+  const yearRows = useMemo(
+    () => cachedRows ?? (isCurrentYearLoaded ? loadedState.rows : []),
+    [cachedRows, isCurrentYearLoaded, loadedState.rows]
+  );
+  const loading = !cachedRows && !isCurrentYearLoaded;
+  const error = !cachedRows && isCurrentYearLoaded ? loadedState.error : null;
 
   const [activeStory, setActiveStory] = useState<StoryCase | null>(null);
   const [isAutoTour, setIsAutoTour] = useState<boolean>(false);
@@ -128,16 +143,10 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
   useEffect(() => {
     let cancelled = false;
 
-    if (!initialYearCache[selectedYear]) {
-      setLoading(true);
-    }
-    setError(null);
-
     fetchAndCacheYear(selectedYear)
       .then((rows) => {
         if (!cancelled) {
-          setYearRows(rows);
-          setLoading(false);
+          setLoadedState({ year: selectedYear, rows, error: null });
         }
         const storyYears = Array.from(new Set(STORY_CASES.map((s) => s.year)));
         storyYears.forEach((y) => {
@@ -148,9 +157,11 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Veri yüklenemedi');
-          setYearRows([]);
-          setLoading(false);
+          setLoadedState({
+            year: selectedYear,
+            rows: [],
+            error: err instanceof Error ? err.message : 'Veri yüklenemedi',
+          });
         }
       });
 

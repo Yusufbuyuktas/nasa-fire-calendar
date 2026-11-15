@@ -1,23 +1,97 @@
-# NASA Space Apps – Küresel Yangın Aktivitesi Takvimi
+# NASA FIRMS — Küresel Yangın Aktivitesi Takvimi
 
-## 1. Kilitli MVP Kapsamı (Çekirdek Özellikler)
-- **3D Küre (`react-globe.gl`):** Tüm dünyayı kapsayan 1° veya 2° ızgara hücrelerinde ay kaydırıcısı (slider) ile yangın yoğunluğu gösterimi.
-- **Yangın Aktivitesi Takvimi (Apache ECharts):** Seçilen ızgara hücresi için erişilebilir (renk körü dostu) paletle Yıl × Ay ısı haritası.
-- **Mevsimsellik ve Anomali Grafikleri (Apache ECharts):** Ay bazlı tarihsel ortalama grafiği (tepe ay vurgulu) ve çok yıllık ortalamaya göre sapma göstergesi.
-- **MODIS + VIIRS Uyumlaştırma:** Farklı çözünürlükteki sensör kayıtlarının ay bazlı yüzdelik dilim / z-skoru yöntemiyle tek zaman serisine dönüştürülmesi.
-- **CSV Veri İndirme:** Seçilen hücrenin aylık özet ve uyumlaştırılmış verilerinin tarayıcı üzerinden `.csv` olarak indirilmesi.
-- **Mimari:** Backend sunucusu olmadan, Python veri hattından üretilen statik veri dosyalarının (`CSV` veya `JSON`) doğrudan tarayıcıda işlenmesi.
+MODIS (2000–2026) ve VIIRS (2012–2026) uydu aktif yangın (hotspot) verilerini 2° × 2° mekânsal ızgarada uyumlaştıran, çok yıllık mevsimsellik ve anomali analizi sunan etkileşimli web uygulaması.
 
-## 2. Yapılırsa Güzel (Ek Özellikler – Kesme Sırasına Göre)
-*Süre yetmezse 1 numaradan başlanarak sırayla kapsamdan çıkarılır:*
-1. **Hikâye Modu:** Kürenin önemli yangın bölgelerine otomatik uçuşu (demo videosu için).
-2. **Yangın Sezonu Kayması Göstergesi:** Sezonun son yıllarda erken veya geç başlayıp başlamadığı.
-3. **İtfaiye İstasyonları Karar Desteği:** OpenStreetMap üzerinden en yakın istasyonların gösterimi.
-4. **E-posta Bildirim Simülasyonu:** Riskli dönemler için arayüz içi örnek bildirim önizlemesi (gerçek gönderim yok).
+> **Bilimsel Sorumluluk Notu:** Bu uygulama uydu sıcak nokta kayıtlarına dayalı **tarihsel aktivite ve anomali göstergesi** sunar; operasyonel erken uyarı sistemi veya yangın tahmini değildir.
 
-## 3. Kesin Kapsam Dışı
-- Canlı backend sunucusu ve veritabanı
-- Gerçek e-posta veya SMS gönderim altyapısı
-- Landsat 30 m, NOAA-20/21 verileri ve hava durumu katmanı
-- Küre üzerinde serbest poligon çizimi ile alan seçimi
-- Canlı sunucuya deploy (teslim video ve rapor ile yapılacak)
+---
+
+## Proje Yapısı
+
+```text
+nasa-fire-calendar/
+├── data/
+│   ├── raw/              # NASA FIRMS arşiv CSV dosyaları (Git'e dahil değildir)
+│   └── processed/        # Pipeline ara çıktıları (Git'e dahil değildir)
+├── docs/                 # Metodoloji ve teknik dokümantasyon
+├── pipeline/             # Python & DuckDB veri temizleme, uyumlaştırma ve anomali hattı
+└── web/                  # React + TypeScript + Vite + Tailwind + Three.js/ECharts arayüzü
+```
+
+---
+
+## Gereksinimler
+
+- **Node.js:** `>= 22.0.0` (test edilen sürüm kök dizindeki `.nvmrc` dosyasında sabitlenmiştir)
+- **Python:** `3.11+` (test edilen sürüm: `3.13`)
+
+---
+
+## Kurulum ve Çalıştırma (Web Arayüzü)
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
+Üretim derlemesi ve kod kalite kontrolü için:
+
+```bash
+cd web
+npm run lint
+npm run build
+```
+
+---
+
+## Veri İndirme ve Python Pipeline Çalıştırma Sırası
+
+Web arayüzü herhangi bir canlı backend sunucusuna ihtiyaç duymadan `web/public/data/{yıl}.csv` statik dosyalarını okur. Veri hattını sıfırdan çalıştırmak için:
+
+### 1. Python Sanal Ortamını Kurun
+
+```bash
+python -m venv .venv
+# Windows:
+.\.venv\Scripts\pip install -r pipeline\requirements.txt
+# macOS / Linux:
+source .venv/bin/activate && pip install -r pipeline/requirements.txt
+```
+
+### 2. Ham FIRMS Verilerini İndirin
+
+1. [NASA FIRMS Archive Download](https://firms.modaps.eosdis.nasa.gov/download/) sayfasından CSV formatında arşiv talebi oluşturun.
+2. İndirilen dosyaları `data/raw/` klasörü altına yerleştirin. `clean.py` dosya adındaki sensör kodunu otomatik tanır:
+   - `M-C61` → MODIS Collection 6.1
+   - `SV-C2` → VIIRS S-NPP
+   - `J1V-C2` → VIIRS NOAA-20
+   - `J2V-C2` → VIIRS NOAA-21
+3. Her CSV dosyası en az `latitude`, `longitude`, `acq_date` ve `frp` sütunlarını içermelidir.
+
+### 3. Pipeline Adımlarını Sırasıyla Çalıştırın
+
+```bash
+.\.venv\Scripts\python pipeline\clean.py
+.\.venv\Scripts\python pipeline\aggregate.py
+.\.venv\Scripts\python pipeline\harmonize.py
+.\.venv\Scripts\python pipeline\anomalies_v2.py
+.\.venv\Scripts\python pipeline\export_frontend.py
+.\.venv\Scripts\python pipeline\split_frontend.py
+```
+
+| Adım | Betik | Açıklama |
+| :--- | :--- | :--- |
+| 1 | `clean.py` | `data/raw/` altındaki ham CSV dosyalarını temizler ve sensör etiketler. |
+| 2 | `aggregate.py` | Kayıtları 2° × 2° ızgara hücrelerinde aylık bazda toplulaştırır. |
+| 3 | `harmonize.py` | MODIS ve VIIRS ölçümlerini tek aktivite indeksinde kalibre eder. |
+| 4 | `anomalies_v2.py` | Tarihsel taban çizgisine göre z-skoru ve anomali sınıflarını hesaplar. |
+| 5 | `export_frontend.py` | Arayüz şemasına uygun `data/processed/frontend_activity.csv` çıktısını üretir. |
+| 6 | `split_frontend.py` | Veriyi yıllara bölerek `web/public/data/{yıl}.csv` dosyalarını oluşturur. |
+
+---
+
+## Mevcut Veri Kapsamı Notu
+
+- **Zaman Aralığı:** Kasım 2000 – Ekim 2026 (2000 yılı MODIS Terra başlangıcı nedeniyle Kasım–Aralık; 2026 yılı ise Ekim ayına kadar kısmi veri içerir).
+- **Mekânsal Kapsam:** Mevcut statik veri seti 40°K enleminin güneyi ve 122°B boylamının doğusundaki kara hücrelerini kapsar.
