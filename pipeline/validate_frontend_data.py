@@ -198,7 +198,7 @@ def main():
     print("Grid ID consistency: PASS")
     print("Coordinates and activity: PASS")
     print("Duplicate grid-months: PASS")
-print("JSON/source consistency: PASS")
+    print("JSON/source consistency: PASS")
     print("\nRESULT: PASSED")
 
 
