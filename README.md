@@ -1,6 +1,6 @@
-# NASA FIRMS — Küresel Yangın Aktivitesi Takvimi
+﻿# NASA FIRMS — Yangın Aktivitesi Takvimi
 
-MODIS (2000–2026) ve VIIRS (2012–2026) uydu aktif yangın (hotspot) verilerini 2° × 2° mekânsal ızgarada uyumlaştıran, çok yıllık mevsimsellik ve anomali analizi sunan etkileşimli web uygulaması.
+MODIS (2000–2026), VIIRS NOAA-20 (2018–2026) ve VIIRS NOAA-21 (2023–2026) uydu aktif yangın (hotspot) verilerini 2° × 2° mekânsal ızgarada uyumlaştıran, çok yıllık mevsimsellik ve anomali analizi sunan etkileşimli web uygulaması.
 
 > **Bilimsel Sorumluluk Notu:** Bu uygulama uydu sıcak nokta kayıtlarına dayalı **tarihsel aktivite ve anomali göstergesi** sunar; operasyonel erken uyarı sistemi veya yangın tahmini değildir.
 
@@ -93,5 +93,10 @@ source .venv/bin/activate && pip install -r pipeline/requirements.txt
 
 ## Mevcut Veri Kapsamı Notu
 
-- **Zaman Aralığı:** Kasım 2000 – Ekim 2026 (2000 yılı MODIS Terra başlangıcı nedeniyle Kasım–Aralık; 2026 yılı ise Ekim ayına kadar kısmi veri içerir).
-- **Mekânsal Kapsam:** Mevcut statik veri seti 40°K enleminin güneyi ve 122°B boylamının doğusundaki kara hücrelerini kapsar.
+- **Zaman Aralığı:** Kasım 2000 – Ekim 2026. Başlangıç ve bitiş yılları kısmi kapsam içerir.
+- **Kullanılan Sensörler:** MODIS (2000–2026), VIIRS NOAA-20 (2018–2026), VIIRS NOAA-21 (2023–2026).
+- **NASA FIRMS İndirme Sınırları:** Batı -120.6°, Güney -57.8°, Doğu 180°, Kuzey 38.9°.
+- **Mekânsal Çözünürlük:** 2° × 2° grid.
+- **Önemli Sınırlama:** Veri seti küresel değildir. İndirme sınırları dışındaki bölgeler için yangın aktivitesi değerlendirilemez.
+- **Eksik Veri:** Hotspot kaydı bulunmaması, yangın olmadığı veya uydu gözleminin eksiksiz olduğu anlamına gelmez.
+- **Doğrulama:** 566.355 harmonize kaydın koordinatları kontrol edilmiştir; geçersiz koordinat bulunmamıştır. Bu kontrol bölgesel veri bütünlüğünü kanıtlamaz.
