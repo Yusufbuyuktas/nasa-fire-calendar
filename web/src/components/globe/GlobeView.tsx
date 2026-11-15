@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
 import Papa from 'papaparse';
 import { Flame, Activity, Info, Compass, Play, Pause } from 'lucide-react';
@@ -7,7 +7,7 @@ import { STORY_CASES, type StoryCase } from './storyCases';
 
 interface GlobeViewProps {
   selectedCell: FireGridRow | null;
-  onSelectCell: (cell: FireGridRow) => void;
+  onSelectCell: (cell: FireGridRow | null) => void;
 }
 
 type ViewMode = 'anomaly' | 'activity';
@@ -213,7 +213,10 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
       tourIndexRef.current = index;
     }
     setActiveStory(story);
-    pendingStoryRef.current = story;
+    if (story.coverageStatus === 'outside_download_bounds') {
+      onSelectCell(null);
+    }
+    pendingStoryRef.current = story.coverageStatus === 'outside_download_bounds' ? null : story;
     setSelectedYear(story.year);
     setSelectedMonth(story.month);
 
@@ -223,7 +226,7 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
         1000
       );
     }
-  }, []);
+  }, [onSelectCell]);
 
   useEffect(() => {
     if (!isAutoTour) return;
@@ -394,6 +397,12 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
             <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
               {activeStory.summary}
             </p>
+            {activeStory.coverageStatus === 'outside_download_bounds' && (
+              <p className="mt-2 text-amber-300 font-medium">
+                Veri kapsamı dışında: Bu bölge mevcut NASA FIRMS indirme sınırlarının dışındadır.
+                Bu hikâye için yangın aktivitesi veya anomali sonucu sunulamaz.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -500,6 +509,11 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
           <span className="flex items-center gap-1 text-slate-500">
             <Info className="h-3 w-3 shrink-0" />
             Tarihsel aktivite göstergesidir; operasyonel erken uyarı/tahmin değildir.
+          </span>
+          <span className="flex items-start gap-1 text-amber-300/80">
+            <Info className="h-3 w-3 shrink-0 mt-0.5" />
+            Veri kapsamı sınırlıdır (120.6°B–180°D, 57.8°G–38.9°K).
+            Veri bulunmaması, yangın olmadığı anlamına gelmez.
           </span>
         </div>
       </div>

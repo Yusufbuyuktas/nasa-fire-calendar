@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { GlobeView } from './components/globe/GlobeView';
 import AnalyticsPanel from './components/charts/AnalyticsPanel';
 import type { FireDataRow } from './types/fireData';
@@ -12,7 +12,7 @@ export default function App() {
         <div className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
           <h1 className="text-sm font-bold tracking-wide">
-            NASA FIRMS — Küresel Yangın Aktivitesi Takvimi
+            NASA FIRMS — Yangın Aktivitesi Takvimi
           </h1>
         </div>
         <span className="text-xs text-slate-400">

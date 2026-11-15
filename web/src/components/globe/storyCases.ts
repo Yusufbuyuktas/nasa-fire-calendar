@@ -1,4 +1,4 @@
-export interface StoryCase {
+﻿export interface StoryCase {
   id: string;
   title: string;
   periodLabel: string;
@@ -7,6 +7,7 @@ export interface StoryCase {
   lat: number;
   lon: number;
   summary: string;
+  coverageStatus?: 'outside_download_bounds';
 }
 
 export const STORY_CASES: StoryCase[] = [
@@ -22,6 +23,7 @@ export const STORY_CASES: StoryCase[] = [
   },
   {
     id: 'california-2020',
+    coverageStatus: 'outside_download_bounds',
     title: 'Kaliforniya',
     periodLabel: 'Eyl 2020',
     year: 2020,
@@ -52,6 +54,7 @@ export const STORY_CASES: StoryCase[] = [
   },
   {
     id: 'canada-2023',
+    coverageStatus: 'outside_download_bounds',
     title: 'Kanada Boreal',
     periodLabel: 'Haz 2023',
     year: 2023,
