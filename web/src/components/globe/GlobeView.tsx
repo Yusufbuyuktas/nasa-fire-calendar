@@ -1,16 +1,27 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
-import Papa from 'papaparse';
-import { Flame, Activity, Info, Compass, Play, Pause } from 'lucide-react';
+import * as THREE from 'three';
+import { Flame, Activity, Info, Compass, Play, Pause, Eye, EyeOff } from 'lucide-react';
 import type { AnomalyLevel, FireGridRow } from '../../types/fireData';
+import { getCachedFireYear, loadFireYear } from '../../services/fireDataService';
 import { STORY_CASES, type StoryCase } from './storyCases';
 
 interface GlobeViewProps {
   selectedCell: FireGridRow | null;
   onSelectCell: (cell: FireGridRow | null) => void;
+  selectedYear: number;
+  onSelectYear: (year: number) => void;
+  selectedMonth: number;
+  onSelectMonth: (month: number) => void;
 }
 
 type ViewMode = 'anomaly' | 'activity';
+
+interface EmptyCellInfo {
+  grid_id: string;
+  lat: number;
+  lon: number;
+}
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -20,10 +31,10 @@ const MONTH_NAMES = [
 const ANOMALY_COLORS: Record<AnomalyLevel, string> = {
   VERY_LOW: '#2563eb',
   LOW: '#38bdf8',
-  NORMAL: '#64748b',
+  NORMAL: '#94a3b8',
   HIGH: '#f97316',
   VERY_HIGH: '#ef4444',
-  INSUFFICIENT_DATA: '#334155',
+  INSUFFICIENT_DATA: '#64748b',
 };
 
 function getActivityColor(val: number): string {
@@ -34,65 +45,55 @@ function getActivityColor(val: number): string {
   return '#4c1d95';
 }
 
-const initialYearCache: Record<number, FireGridRow[] | undefined> = {};
-const loadingPromises = new Map<number, Promise<FireGridRow[]>>();
+// Görünmez 2°×2° tıklama/hover alanı (yuvarlak noktaların görünümünü bozmaz)
+const HITBOX_TILE_MATERIAL = new THREE.MeshBasicMaterial({
+  colorWrite: false,
+  depthWrite: false,
+});
 
-function fetchAndCacheYear(year: number): Promise<FireGridRow[]> {
-  const cached = initialYearCache[year];
-  if (cached) {
-    return Promise.resolve(cached);
-  }
-  const existingPromise = loadingPromises.get(year);
-  if (existingPromise) {
-    return existingPromise;
-  }
-
-  const requestPromise = fetch(`/data/${year}.csv`)
-    .then((res) => {
-      if (!res.ok) throw new Error(`${year}.csv bulunamadı (${res.status})`);
-      return res.text();
-    })
-    .then(
-      (csvText) =>
-        new Promise<FireGridRow[]>((resolve) => {
-          Papa.parse<FireGridRow>(csvText, {
-            header: true,
-            dynamicTyping: true,
-            skipEmptyLines: true,
-            worker: true,
-            complete: (results) => {
-              const cleanRows = results.data.filter(
-                (r) =>
-                  typeof r.lat === 'number' &&
-                  typeof r.lon === 'number' &&
-                  typeof r.month === 'number'
-              );
-              initialYearCache[year] = cleanRows;
-              loadingPromises.delete(year);
-              resolve(cleanRows);
-            },
-          });
-        })
-    )
-    .catch((err) => {
-      loadingPromises.delete(year);
-      throw err;
-    });
-
-  loadingPromises.set(year, requestPromise);
-  return requestPromise;
+function coordsToGridCell(lat: number, lng: number): EmptyCellInfo {
+  const gridLat = Math.max(0, Math.min(89, Math.floor((lat + 90) / 2)));
+  const gridLon = Math.max(0, Math.min(179, Math.floor((lng + 180) / 2)));
+  return {
+    grid_id: `${gridLat}_${gridLon}`,
+    lat: gridLat * 2 - 89,
+    lon: gridLon * 2 - 179,
+  };
 }
 
-export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
+function toCleanFireRow(raw: FireGridRow): FireGridRow {
+  return {
+    grid_id: raw.grid_id,
+    lat: raw.lat,
+    lon: raw.lon,
+    year: raw.year,
+    month: raw.month,
+    activity_index: raw.activity_index,
+    z_score: raw.z_score ?? null,
+    anomaly_level: raw.anomaly_level,
+    source: raw.source,
+    history_count: raw.history_count,
+    confidence_level: raw.confidence_level,
+  };
+}
+
+export function GlobeView({
+  selectedCell,
+  onSelectCell,
+  selectedYear,
+  onSelectYear,
+  selectedMonth,
+  onSelectMonth,
+}: GlobeViewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const globeRef = useRef<GlobeMethods | undefined>(undefined);
   const pendingStoryRef = useRef<StoryCase | null>(null);
   const tourIndexRef = useRef<number>(0);
 
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  const [selectedYear, setSelectedYear] = useState<number>(2025);
-  const [selectedMonth, setSelectedMonth] = useState<number>(8);
   const [viewMode, setViewMode] = useState<ViewMode>('anomaly');
+  const [showNormalCells, setShowNormalCells] = useState<boolean>(false);
+  const [emptyCellNotice, setEmptyCellNotice] = useState<EmptyCellInfo | null>(null);
 
   const [loadedState, setLoadedState] = useState<{
     year: number | null;
@@ -100,7 +101,7 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
     error: string | null;
   }>({ year: null, rows: [], error: null });
 
-  const cachedRows = initialYearCache[selectedYear];
+  const cachedRows = getCachedFireYear(selectedYear);
   const isCurrentYearLoaded = loadedState.year === selectedYear;
   const yearRows = useMemo(
     () => cachedRows ?? (isCurrentYearLoaded ? loadedState.rows : []),
@@ -143,15 +144,15 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
   useEffect(() => {
     let cancelled = false;
 
-    fetchAndCacheYear(selectedYear)
+    loadFireYear(selectedYear)
       .then((rows) => {
         if (!cancelled) {
           setLoadedState({ year: selectedYear, rows, error: null });
         }
         const storyYears = Array.from(new Set(STORY_CASES.map((s) => s.year)));
         storyYears.forEach((y) => {
-          if (!initialYearCache[y]) {
-            fetchAndCacheYear(y).catch(() => {});
+          if (!getCachedFireYear(y)) {
+            loadFireYear(y).catch(() => {});
           }
         });
       })
@@ -170,31 +171,42 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
     };
   }, [selectedYear]);
 
-  // Yalnızca anlamlı mavi ve turuncu/kırmızı noktaları göster
-  const activePoints = useMemo(() => {
-    return yearRows.filter((row) => {
-      if (row.month !== selectedMonth) return false;
+  // Seçili ayın tüm kayıtları (tıklama araması için)
+  const monthRows = useMemo(
+    () => yearRows.filter((row) => row.month === selectedMonth),
+    [yearRows, selectedMonth]
+  );
+
+  // Kürede çizilecek aktif hücreler (INSUFFICIENT_DATA artık 2000–2003 için görünür)
+  const activeCells = useMemo(() => {
+    return monthRows.filter((row) => {
       if (!row.activity_index || row.activity_index <= 0) return false;
-      if (row.anomaly_level === 'INSUFFICIENT_DATA') return false;
-      if (viewMode === 'anomaly' && row.anomaly_level === 'NORMAL') return false;
+      if (
+        viewMode === 'anomaly' &&
+        !showNormalCells &&
+        row.anomaly_level === 'NORMAL'
+      ) {
+        return false;
+      }
       return true;
     });
-  }, [yearRows, selectedMonth, viewMode]);
+  }, [monthRows, viewMode, showNormalCells]);
 
-  const selectedRingData = useMemo(
-    () => (selectedCell ? [selectedCell] : []),
-    [selectedCell]
-  );
+  const selectedRingData = useMemo(() => {
+    if (emptyCellNotice) return [emptyCellNotice];
+    if (selectedCell) return [selectedCell];
+    return [];
+  }, [selectedCell, emptyCellNotice]);
 
   useEffect(() => {
     const target = pendingStoryRef.current;
-    if (!target || activePoints.length === 0) return;
+    if (!target || activeCells.length === 0) return;
     if (selectedYear !== target.year || selectedMonth !== target.month) return;
 
-    let closestRow = activePoints[0];
+    let closestRow = activeCells[0];
     let minDist = Infinity;
 
-    for (const row of activePoints) {
+    for (const row of activeCells) {
       const dist = Math.hypot(row.lat - target.lat, row.lon - target.lon);
       if (dist < minDist) {
         minDist = dist;
@@ -202,31 +214,41 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
       }
     }
 
-    if (closestRow && minDist <= 8) {
-      onSelectCell(closestRow);
-    }
+   if (closestRow && minDist <= 8) {
+  setEmptyCellNotice(null);
+  onSelectCell(toCleanFireRow(closestRow));
+}
     pendingStoryRef.current = null;
-  }, [activePoints, selectedYear, selectedMonth, onSelectCell]);
+  }, [activeCells, selectedYear, selectedMonth, onSelectCell]);
 
-  const flyToStory = useCallback((story: StoryCase, index?: number) => {
-    if (typeof index === 'number') {
-      tourIndexRef.current = index;
-    }
-    setActiveStory(story);
-    if (story.coverageStatus === 'outside_download_bounds') {
-      onSelectCell(null);
-    }
-    pendingStoryRef.current = story.coverageStatus === 'outside_download_bounds' ? null : story;
-    setSelectedYear(story.year);
-    setSelectedMonth(story.month);
+  const flyToStory = useCallback(
+    (story: StoryCase, index?: number) => {
+      if (typeof index === 'number') {
+        tourIndexRef.current = index;
+      }
 
-    if (globeRef.current) {
-      globeRef.current.pointOfView(
-        { lat: story.lat, lng: story.lon, altitude: 1.45 },
-        1000
-      );
-    }
-  }, [onSelectCell]);
+      setActiveStory(story);
+      setEmptyCellNotice(null);
+
+      if (story.coverageStatus === 'outside_download_bounds') {
+        onSelectCell(null);
+        pendingStoryRef.current = null;
+      } else {
+        pendingStoryRef.current = story;
+      }
+
+      onSelectYear(story.year);
+      onSelectMonth(story.month);
+
+      if (globeRef.current) {
+        globeRef.current.pointOfView(
+          { lat: story.lat, lng: story.lon, altitude: 1.45 },
+          1000
+        );
+      }
+    },
+    [onSelectCell, onSelectYear, onSelectMonth]
+  );
 
   useEffect(() => {
     if (!isAutoTour) return;
@@ -259,6 +281,9 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
         if (row.anomaly_level === 'VERY_HIGH' || row.anomaly_level === 'VERY_LOW') {
           return 0.5;
         }
+        if (row.anomaly_level === 'NORMAL' || row.anomaly_level === 'INSUFFICIENT_DATA') {
+          return 0.28;
+        }
         return 0.36;
       }
       const val = row.activity_index || 0;
@@ -275,7 +300,9 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
     return Math.min(0.015, 0.002 + (row.activity_index || 0) * 0.00002);
   }, []);
 
-  const getPointLabel = useCallback((d: object) => {
+  const getHitboxTileMaterial = useCallback(() => HITBOX_TILE_MATERIAL, []);
+
+  const getTileLabel = useCallback((d: object) => {
     const r = d as FireGridRow;
     const zText =
       r.z_score !== null && r.z_score !== undefined ? r.z_score.toFixed(2) : 'Yok';
@@ -289,34 +316,80 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
     `;
   }, []);
 
+  const handleTileClick = useCallback(
+    (tile: object) => {
+      setIsAutoTour(false);
+      setEmptyCellNotice(null);
+      onSelectCell(tile as FireGridRow);
+    },
+    [onSelectCell]
+  );
+
+  const handleGlobeClick = useCallback(
+    ({ lat, lng }: { lat: number; lng: number }) => {
+      setIsAutoTour(false);
+      const cellInfo = coordsToGridCell(lat, lng);
+      const matchedRow = monthRows.find((r) => r.grid_id === cellInfo.grid_id);
+
+      if (matchedRow) {
+        setEmptyCellNotice(null);
+        onSelectCell(matchedRow);
+      } else {
+        setEmptyCellNotice(cellInfo);
+      }
+    },
+    [monthRows, onSelectCell]
+  );
+
   return (
     <div ref={containerRef} className="relative h-full w-full bg-slate-950 overflow-hidden select-none">
       {/* Üst Kontrol Çubuğu */}
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2 pointer-events-none">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-1 rounded-lg bg-slate-900/90 p-1 border border-slate-800 backdrop-blur pointer-events-auto">
-            <button
-              onClick={() => setViewMode('anomaly')}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                viewMode === 'anomaly'
-                  ? 'bg-orange-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Activity className="h-3.5 w-3.5" />
-              Anomali Seviyesi
-            </button>
-            <button
-              onClick={() => setViewMode('activity')}
-              className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
-                viewMode === 'activity'
-                  ? 'bg-orange-600 text-white'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <Flame className="h-3.5 w-3.5" />
-              Aktivite İndeksi
-            </button>
+          <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
+            <div className="flex items-center gap-1 rounded-lg bg-slate-900/90 p-1 border border-slate-800 backdrop-blur">
+              <button
+                onClick={() => setViewMode('anomaly')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  viewMode === 'anomaly'
+                    ? 'bg-orange-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Activity className="h-3.5 w-3.5" />
+                Anomali Seviyesi
+              </button>
+              <button
+                onClick={() => setViewMode('activity')}
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
+                  viewMode === 'activity'
+                    ? 'bg-orange-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Flame className="h-3.5 w-3.5" />
+                Aktivite İndeksi
+              </button>
+            </div>
+
+            {viewMode === 'anomaly' && (
+              <button
+                onClick={() => setShowNormalCells((prev) => !prev)}
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium border backdrop-blur transition ${
+                  showNormalCells
+                    ? 'bg-slate-800/95 border-slate-600 text-slate-100'
+                    : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+                title="Mevsim normallerindeki (NORMAL) yangın hücrelerini göster/gizle"
+              >
+                {showNormalCells ? (
+                  <Eye className="h-3.5 w-3.5 text-cyan-400" />
+                ) : (
+                  <EyeOff className="h-3.5 w-3.5" />
+                )}
+                Normal Hücreler
+              </button>
+            )}
           </div>
 
           <div className="rounded-lg bg-slate-900/90 px-3 py-1.5 text-xs border border-slate-800 backdrop-blur text-slate-300">
@@ -326,9 +399,9 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
               <span className="text-red-400">{error}</span>
             ) : (
               <span>
-                Anomali Noktası:{' '}
+                Aktif Hücre:{' '}
                 <strong className="text-white">
-                  {activePoints.length.toLocaleString('tr-TR')}
+                  {activeCells.length.toLocaleString('tr-TR')}
                 </strong>{' '}
                 (2°×2°)
               </span>
@@ -377,6 +450,22 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
           </button>
         </div>
 
+        {/* Boş Hücre Tıklama Bildirimi */}
+        {emptyCellNotice && (
+          <div className="self-start flex items-center gap-3 rounded-lg bg-slate-900/95 px-3 py-2 border border-cyan-500/40 backdrop-blur pointer-events-auto text-xs text-slate-200">
+            <span>
+              Hücre <strong className="text-cyan-400">{emptyCellNotice.grid_id}</strong> ({emptyCellNotice.lat}°, {emptyCellNotice.lon}°):{' '}
+              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} döneminde kayıtlı yangın aktivitesi yok.
+            </span>
+            <button
+              onClick={() => setEmptyCellNotice(null)}
+              className="text-[11px] text-slate-400 hover:text-white"
+            >
+              ×
+            </button>
+          </div>
+        )}
+
         {/* Seçili Hikâye Kartı */}
         {activeStory && (
           <div className="self-start max-w-md rounded-lg bg-slate-900/90 px-3 py-2 border border-orange-500/40 backdrop-blur pointer-events-auto text-xs">
@@ -407,7 +496,7 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
         )}
       </div>
 
-      {/* 3D Küre (Dairesel Nokta Katmanı) */}
+      {/* 3D Küre: Görsel Yuvarlak Noktalar + Görünmez 2°×2° Tıklama Alanları */}
       <Globe
         ref={globeRef}
         onGlobeReady={handleGlobeReady}
@@ -419,24 +508,32 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
         atmosphereColor="#38bdf8"
         atmosphereAltitude={0.16}
         backgroundColor="#020617"
-        pointsData={activePoints}
+        pointsData={activeCells}
         pointLat="lat"
         pointLng="lon"
         pointColor={getPointColor}
         pointRadius={getPointRadius}
         pointAltitude={getPointAltitude}
-        pointResolution={14}
+        pointResolution={16}
         pointsMerge={true}
         pointsTransitionDuration={0}
-        pointLabel={getPointLabel}
-        onPointClick={(d: object) => {
-          setIsAutoTour(false);
-          onSelectCell(d as FireGridRow);
-        }}
+        tilesData={activeCells}
+        tileLat="lat"
+        tileLng="lon"
+        tileWidth={1.98}
+        tileHeight={1.98}
+        tileAltitude={0.016}
+        tileMaterial={getHitboxTileMaterial}
+        tileUseGlobeProjection={true}
+        tileCurvatureResolution={4}
+        tilesTransitionDuration={0}
+        tileLabel={getTileLabel}
+        onTileClick={handleTileClick}
+        onGlobeClick={handleGlobeClick}
         ringsData={selectedRingData}
         ringLat="lat"
         ringLng="lon"
-        ringAltitude={0.016}
+        ringAltitude={0.017}
         ringColor={() => (t: number) => `rgba(34, 211, 238, ${1 - t})`}
         ringMaxRadius={2.4}
         ringPropagationSpeed={2.2}
@@ -450,7 +547,7 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
             <div className="flex justify-between text-xs mb-1">
               <span className="text-slate-400">Yıl Seçimi</span>
               <span className="font-bold text-orange-400">
-                {selectedYear} {selectedYear === 2026 && '(14 Kas 2026’ya kadar kısmi)'}
+                {selectedYear} {selectedYear === 2026 && '(Ekim 2026’ya kadar kısmi)'}
               </span>
             </div>
             <input
@@ -460,7 +557,8 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
               value={selectedYear}
               onChange={(e) => {
                 setIsAutoTour(false);
-                setSelectedYear(Number(e.target.value));
+                setEmptyCellNotice(null);
+                onSelectYear(Number(e.target.value));
               }}
               className="w-full accent-orange-500 cursor-pointer"
             />
@@ -480,7 +578,8 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
               value={selectedMonth}
               onChange={(e) => {
                 setIsAutoTour(false);
-                setSelectedMonth(Number(e.target.value));
+                setEmptyCellNotice(null);
+                onSelectMonth(Number(e.target.value));
               }}
               className="w-full accent-orange-500 cursor-pointer"
             />
@@ -493,8 +592,12 @@ export function GlobeView({ selectedCell, onSelectCell }: GlobeViewProps) {
             <div className="flex flex-wrap items-center gap-3">
               <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#2563eb]" /> Çok Düşük</span>
               <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#38bdf8]" /> Düşük</span>
+              {showNormalCells && (
+                <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#94a3b8]" /> Normal</span>
+              )}
               <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#f97316]" /> Yüksek</span>
               <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" /> Çok Yüksek</span>
+              <span className="flex items-center gap-1.5"><i className="h-2.5 w-2.5 rounded-full bg-[#64748b]" /> Yetersiz Tarihçe (2000–03)</span>
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-3">
