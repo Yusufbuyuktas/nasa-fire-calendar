@@ -14,6 +14,7 @@ import {
 import EChartBox from './EChartBox';
 import RiskCalendarCard from './RiskCalendarCard';
 import EmailAlertSimulation from './EmailAlertSimulation';
+import FireStationsPanel from './FireStationsPanel';
 
 interface AnalyticsPanelProps {
   selectedCell?: FireDataRow | null;
@@ -636,6 +637,10 @@ export default function AnalyticsPanel({
       <div className="shrink-0 mt-2">
         <EmailAlertSimulation regionTitle={regionTitle} />
       </div>
+      {/* İtfaiye İstasyonları */}
+      {selectedCell && (
+        <FireStationsPanel cellLat={selectedCell.lat} cellLon={selectedCell.lon} />
+      )}
     </div>
   );
 }
