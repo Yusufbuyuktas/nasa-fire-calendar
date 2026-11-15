@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Flame, Activity, Info, Compass, Play, Pause, Eye, EyeOff } from 'lucide-react';
 import type { AnomalyLevel, FireGridRow } from '../../types/fireData';
 import { getCachedFireYear, loadFireYear } from '../../services/fireDataService';
-import { STORY_CASES, type StoryCase } from './storyCases';
+import { storyCases, type StoryCase } from './storyCases';
 
 interface GlobeViewProps {
   selectedCell: FireGridRow | null;
@@ -149,7 +149,7 @@ export function GlobeView({
         if (!cancelled) {
           setLoadedState({ year: selectedYear, rows, error: null });
         }
-        const storyYears = Array.from(new Set(STORY_CASES.map((s) => s.year)));
+        const storyYears = Array.from(new Set(storyCases.map((s) => s.year)));
         storyYears.forEach((y) => {
           if (!getCachedFireYear(y)) {
             loadFireYear(y).catch(() => {});
@@ -250,14 +250,14 @@ export function GlobeView({
     [onSelectCell, onSelectYear, onSelectMonth]
   );
 
-  useEffect(() => {
+useEffect(() => {
     if (!isAutoTour) return;
 
-    flyToStory(STORY_CASES[tourIndexRef.current], tourIndexRef.current);
+    flyToStory(storyCases[tourIndexRef.current], tourIndexRef.current);
 
     const timer = window.setInterval(() => {
-      const nextIdx = (tourIndexRef.current + 1) % STORY_CASES.length;
-      flyToStory(STORY_CASES[nextIdx], nextIdx);
+      const nextIdx = (tourIndexRef.current + 1) % storyCases.length;
+      flyToStory(storyCases[nextIdx], nextIdx);
     }, 3200);
 
     return () => window.clearInterval(timer);
@@ -416,11 +416,11 @@ export function GlobeView({
             Hikâye Modu:
           </span>
 
-          {STORY_CASES.map((story, idx) => {
-            const isSelected = activeStory?.id === story.id;
-            return (
-              <button
-                key={story.id}
+          {storyCases.map((story: StoryCase, idx: number) => {
+        const isSelected = activeStory?.id === story.id;
+        return (
+          <button
+            key={story.id}
                 onClick={() => {
                   setIsAutoTour(false);
                   flyToStory(story, idx);
@@ -502,8 +502,8 @@ export function GlobeView({
         onGlobeReady={handleGlobeReady}
         width={dimensions.width}
         height={dimensions.height}
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+        globeImageUrl="/textures/earth-blue-marble.jpg"
+        bumpImageUrl="/textures/earth-topology.png"
         showGraticules={false}
         atmosphereColor="#38bdf8"
         atmosphereAltitude={0.16}
