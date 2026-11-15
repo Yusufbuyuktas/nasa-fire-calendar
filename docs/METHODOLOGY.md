@@ -1,4 +1,4 @@
-# Scientific Methodology
+﻿# Scientific Methodology
 
 ## Harmonization of MODIS and VIIRS Active Fire Hotspots
 
@@ -28,7 +28,7 @@ The records are normalized into a common schema containing geographic coordinate
 
 Individual hotspot detections are aggregated into:
 
-- A global 2° × 2° geographic grid.
+- A 2° × 2° geographic grid within the available NASA FIRMS download region.
 - Monthly observation periods.
 - Separate hotspot counts for each sensor.
 
@@ -137,13 +137,17 @@ This association does not establish that sensor switching caused the additional 
 
 Several limitations must be considered when interpreting the results.
 
+**Geographic coverage:** The NASA FIRMS source files were downloaded using the bounding box west -120.6°, south -57.8°, east 180°, and north 38.9°. The dataset does not provide global coverage. The bounding box describes the requested download region, not verified complete observation coverage within that region.
+
+**Unobserved regions:** Areas outside the downloaded region cannot be evaluated using this dataset. Missing hotspot records, including those within the downloaded region, must not be interpreted as confirmed zero-fire conditions or complete satellite observations.
+
 **Positive-observation sampling:** Missing hotspot records cannot automatically be interpreted as observed zero-fire conditions.
 
 **Sensor detection differences:** MODIS and VIIRS have different spatial resolutions and detection characteristics. Monthly count calibration does not remove every source of measurement bias.
 
 **Temporal coverage:** The sensors cover different periods. The 2026 observation record is incomplete.
 
-**Spatial resolution:** Aggregation to 2° × 2° cells supports global exploration but is too coarse for precise local incident mapping.
+**Spatial resolution:** Aggregation to 2° × 2° cells supports regional exploration within the available data coverage but is too coarse for precise local incident mapping.
 
 **Anomaly interpretation:** Z-scores describe deviations from historical positive recorded activity. They are not wildfire forecasts or emergency alerts by themselves.
 
