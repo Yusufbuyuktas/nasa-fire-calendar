@@ -336,7 +336,7 @@ const getTileLabel = useCallback((d: object) => {
       <div className="absolute top-3 left-3 right-3 z-10 flex flex-col gap-2 pointer-events-none">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5 pointer-events-auto">
-            <div className="flex items-center gap-1 rounded-lg bg-slate-900/90 p-1 border border-slate-800 backdrop-blur">
+            <div className="flex items-center gap-1 rounded-lg bg-slate-900/50 p-1 border border-white/10 border-b-black/50 border-r-black/50 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
               <button
                 onClick={() => setViewMode('anomaly')}
                 className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition ${
@@ -399,7 +399,7 @@ const getTileLabel = useCallback((d: object) => {
         </div>
 
         {/* Hikâye Modu */}
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-900/85 px-2.5 py-1.5 border border-slate-800/90 backdrop-blur pointer-events-auto">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg bg-slate-900/40 px-2.5 py-1.5 border border-white/10 backdrop-blur-md shadow-lg pointer-events-auto">
           <span className="flex items-center gap-1 text-[11px] font-semibold text-orange-400 mr-1">
             <Compass className="h-3.5 w-3.5" />
             Story Cases:
@@ -524,7 +524,7 @@ const getTileLabel = useCallback((d: object) => {
       />
 
       {/* Alt Kontrol Paneli: Yıl & Ay Slider ve Lejant */}
-      <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-col gap-2 rounded-xl bg-slate-900/90 p-3 border border-slate-800 backdrop-blur">
+      <div className="absolute bottom-3 left-3 right-3 z-10 flex flex-col gap-2 rounded-xl bg-slate-900/50 p-3 border border-white/10 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.5)] animate-fade-in">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <div className="flex justify-between text-xs mb-1">

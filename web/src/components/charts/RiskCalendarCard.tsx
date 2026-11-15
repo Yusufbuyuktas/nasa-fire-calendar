@@ -36,7 +36,7 @@ const RISK_TIER_STYLES: Record<
 
 export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
   return (
-    <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 flex flex-col gap-3.5">
+    <section className="rounded-xl border border-slate-700/50 bg-slate-900/40 backdrop-blur-md p-3.5 flex flex-col gap-3.5 shadow-lg transition-all duration-300 hover:border-orange-500/30 hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] animate-fade-in">
       {/* Title and Summary Metrics */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
