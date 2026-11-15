@@ -37,7 +37,6 @@ const RISK_TIER_STYLES: Record<
 export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
   return (
     <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-3.5 flex flex-col gap-3.5">
-      {/* Başlık ve Özet Metrikler */}
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1.5">
           <Calendar className="h-4 w-4 text-orange-400" />
@@ -51,7 +50,6 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
         </span>
       </div>
 
-      {/* E4: Otomatik Türkçe Periyodiklik Yorumu */}
       <div
         className={`rounded-lg border p-2.5 text-xs leading-relaxed flex items-start gap-2 ${
           report.hasSufficientHistory
@@ -67,7 +65,6 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
         <p>{report.summaryText}</p>
       </div>
 
-      {/* Periyodiklik İstatistik Şeridi */}
       <div className="grid grid-cols-3 gap-2 text-center">
         <div className="rounded-lg border border-slate-800 bg-slate-900/80 px-2 py-1.5">
           <div className="text-[10px] text-slate-400">Mevsimsel Odaklanma</div>
@@ -93,7 +90,6 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
         </div>
       </div>
 
-      {/* E3: 12 Aylık Risk Takvimi Izgarası */}
       <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
         {report.monthlyStats.map((stat) => {
           const style = RISK_TIER_STYLES[stat.riskTier];
@@ -101,7 +97,7 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
             <div
               key={stat.month}
               className={`rounded-lg border p-2 flex flex-col gap-1 transition ${style.cardClass}`}
-              title={`${stat.fullName}: ${stat.activeYears}/${stat.totalObservedYears} yılda aktif (%${stat.frequencyPercent}), Ortalama Aktivite: ${stat.meanActivity}, Yüksek Anomali: ${stat.highAnomalyCount} yıl`}
+              title={`${stat.fullName}: ${stat.activeYears}/${stat.totalObservedYears} yılda aktif (%${stat.frequencyPercent}), Ortalama Aktivite İndeksi: ${stat.meanActivity}, Yüksek Anomali: ${stat.highAnomalyCount} yıl`}
             >
               <div className="flex items-center justify-between gap-1">
                 <span className="text-xs font-bold text-slate-100">
@@ -138,14 +134,16 @@ export default function RiskCalendarCard({ report }: RiskCalendarCardProps) {
         })}
       </div>
 
-      {/* E5: Bilimsel Sorumluluk & Sensör Geçişi Notu */}
       <div className="flex items-start gap-1.5 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 leading-snug">
         <Info className="h-3.5 w-3.5 text-slate-500 shrink-0 mt-0.5" />
         <span>
-          <strong>Metodoloji & Sorumluluk Notu:</strong> Sıklık yüzdeleri Kasım
-          2000 – Ekim 2026 arasındaki tarihsel tekrar oranını gösterir; gelecekteki
-          yangınlar için operasyonel tahmin değildir. 2000–2017 dönemi MODIS,
-          2018 sonrası ise uyumlaştırılmış MODIS+VIIRS kayıtlarını içerir.
+          <strong>Metodoloji & Kapsam Notu:</strong> Aktivite indeksi kalibre
+          edilmiş MODIS/VIIRS sıcak nokta (hotspot) tespit ölçüsüdür; doğrudan
+          yangın şiddeti veya yanan alan değildir. Tespit bulunmayan aylar{' '}
+          <code className="text-slate-300">UNVERIFIED_ZERO</code> (varsayımsal
+          sıfır) olarak işlenmiştir ve kesin yangın yokluğu anlamına gelmez.
+          Veri kapsamı küresel değildir (57.8°G–38.9°K enlem, 120.6°B–180.0°D
+          boylam).
         </span>
       </div>
     </section>

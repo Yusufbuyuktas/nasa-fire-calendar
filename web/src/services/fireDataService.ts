@@ -14,6 +14,48 @@ const loadingYearPromises = new Map<number, Promise<FireGridRow[]>>();
 const cellSeriesCache = new Map<string, FireGridRow[]>();
 const loadingCellPromises = new Map<string, Promise<FireGridRow[]>>();
 
+function normalizeFireRow(
+  raw: Record<string, unknown>,
+  fallbackYear?: number
+): FireGridRow | null {
+  const lat = Number(raw.lat);
+  const lon = Number(raw.lon);
+  const month = Number(raw.month);
+  const year = Number(raw.year ?? fallbackYear);
+
+  if (
+    !raw.grid_id ||
+    Number.isNaN(lat) ||
+    Number.isNaN(lon) ||
+    Number.isNaN(month) ||
+    Number.isNaN(year)
+  ) {
+    return null;
+  }
+
+  let parsedZ: number | null = null;
+  if (raw.z_score !== null && raw.z_score !== undefined && raw.z_score !== '') {
+    const num = Number(raw.z_score);
+    parsedZ = Number.isFinite(num) ? num : null;
+  }
+
+  return {
+    grid_id: String(raw.grid_id),
+    lat,
+    lon,
+    year,
+    month,
+    activity_index: Number(raw.activity_index ?? 0),
+    z_score: parsedZ,
+    anomaly_level:
+      (raw.anomaly_level as AnomalyLevel) || 'INSUFFICIENT_DATA',
+    source: String(raw.source ?? 'Unknown'),
+    history_count: Number(raw.history_count ?? 0),
+    confidence_level:
+      (raw.confidence_level as ConfidenceLevel) || 'INSUFFICIENT',
+  };
+}
+
 export function getCachedFireYear(year: number): FireGridRow[] | undefined {
   return yearCache.get(year);
 }
@@ -55,37 +97,10 @@ export function loadFireYear(year: number): Promise<FireGridRow[]> {
             complete: (results) => {
               const cleanRows: FireGridRow[] = [];
               for (const raw of results.data) {
-                const lat = Number(raw.lat);
-                const lon = Number(raw.lon);
-                const month = Number(raw.month);
-                if (
-                  !raw.grid_id ||
-                  Number.isNaN(lat) ||
-                  Number.isNaN(lon) ||
-                  Number.isNaN(month)
-                ) {
-                  continue;
+                const normalized = normalizeFireRow(raw, year);
+                if (normalized) {
+                  cleanRows.push(normalized);
                 }
-                cleanRows.push({
-                  grid_id: String(raw.grid_id),
-                  lat,
-                  lon,
-                  year: Number(raw.year ?? year),
-                  month,
-                  activity_index: Number(raw.activity_index ?? 0),
-                  z_score:
-                    raw.z_score === null ||
-                    raw.z_score === undefined ||
-                    raw.z_score === ''
-                      ? null
-                      : Number(raw.z_score),
-                  anomaly_level:
-                    (raw.anomaly_level as AnomalyLevel) || 'INSUFFICIENT_DATA',
-                  source: String(raw.source ?? 'Unknown'),
-                  history_count: Number(raw.history_count ?? 0),
-                  confidence_level:
-                    (raw.confidence_level as ConfidenceLevel) || 'INSUFFICIENT',
-                });
               }
 
               yearCache.set(year, cleanRows);
@@ -120,20 +135,27 @@ export function loadCellSeries(gridId: string): Promise<FireGridRow[]> {
   }
 
   const requestPromise = (async (): Promise<FireGridRow[]> => {
-    // 1. Önce hücreye özel JSON dosyasını dene (Faz B7 çıktısı mevcutsa anında döner)
+    // 1. Hücreye özel JSON dosyasından yükle (web/public/data/cells/{grid_id}.json)
     try {
       const jsonRes = await fetch(`/data/cells/${encodeURIComponent(gridId)}.json`);
       if (jsonRes.ok) {
         const payload = (await jsonRes.json()) as
-          | { rows?: FireGridRow[] }
-          | FireGridRow[];
-        const rawRows = Array.isArray(payload) ? payload : payload.rows ?? [];
-        const sorted = sortChronologically(rawRows);
+          | { rows?: Array<Record<string, unknown>> }
+          | Array<Record<string, unknown>>;
+        const rawList = Array.isArray(payload) ? payload : payload.rows ?? [];
+        const normalizedRows: FireGridRow[] = [];
+        for (const item of rawList) {
+          const normalized = normalizeFireRow(item);
+          if (normalized) {
+            normalizedRows.push(normalized);
+          }
+        }
+        const sorted = sortChronologically(normalizedRows);
         cellSeriesCache.set(gridId, sorted);
         return sorted;
       }
     } catch {
-      // JSON dosyası henüz yoksa yıllık CSV yedek yoluna geç
+      // JSON erişilemezse yıllık CSV yedek yoluna geç
     }
 
     // 2. Yedek yol: 2000–2026 yıllık CSV dosyalarından ilgili hücreyi topla

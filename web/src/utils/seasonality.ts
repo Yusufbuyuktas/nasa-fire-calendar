@@ -13,37 +13,37 @@ export interface ChronologicalMonthPoint {
   label: string;
   activityIndex: number;
   zScore: number | null;
-  anomalyLevel: AnomalyLevel | 'NO_DETECTION';
+  anomalyLevel: AnomalyLevel;
   source: string;
   hasRecord: boolean;
 }
 
 export interface MonthSeasonalityStat {
-  month: number; // 1..12
-  shortName: string; // Oca..Ara
-  fullName: string; // Ocak..Aralık
-  totalObservedYears: number; // 26 (Kas 2000 – Eki 2026 penceresi)
-  activeYears: number; // activity_index > 0 olan yıl sayısı
-  frequency: number; // 0..1 arası görülme sıklığı f(ay)
-  frequencyPercent: number; // 0..100 tam sayı yüzde
-  meanActivity: number; // Sıfır doldurmalı ortalama
-  medianActivity: number; // Sıfır doldurmalı medyan
+  month: number;
+  shortName: string;
+  fullName: string;
+  totalObservedYears: number;
+  activeYears: number;
+  frequency: number;
+  frequencyPercent: number;
+  meanActivity: number;
+  medianActivity: number;
   maxActivity: number;
-  highAnomalyCount: number; // HIGH veya VERY_HIGH yıl sayısı
+  highAnomalyCount: number;
   riskTier: MonthRiskTier;
 }
 
 export interface CellSeasonalityReport {
   monthlyStats: MonthSeasonalityStat[];
-  peakMonths: MonthSeasonalityStat[]; // En yoğun 3 ay
-  activeYearCount: number; // En az 1 aktif ayı olan takvim yılı sayısı
-  totalActiveMonths: number; // activity_index > 0 olan toplam ay sayısı
-  totalObservedMonths: number; // 312 ay (Kas 2000 – Eki 2026)
-  seasonalConcentration: number; // 0..1 arası (1 - normalize Shannon entropisi)
-  lag12Autocorrelation: number | null; // Yıllık döngü korelasyonu (r, lag=12)
-  lag24Autocorrelation: number | null; // 2 yıllık döngü korelasyonu (r, lag=24)
+  peakMonths: MonthSeasonalityStat[];
+  activeYearCount: number;
+  totalActiveMonths: number;
+  totalObservedMonths: number;
+  seasonalConcentration: number;
+  lag12Autocorrelation: number | null;
+  lag24Autocorrelation: number | null;
   periodicityStrength: PeriodicityStrength;
-  hasSufficientHistory: boolean; // activeYearCount >= 10
+  hasSufficientHistory: boolean;
   summaryText: string;
 }
 
@@ -138,20 +138,22 @@ export function buildZeroFilledChronologicalSeries(
     for (let month = 1; month <= 12; month += 1) {
       if (!isWithinObservationWindow(year, month)) continue;
       const matched = rowMap.get(`${year}-${month}`);
-      const activity =
-        matched && matched.activity_index > 0
-          ? Math.round(matched.activity_index * 10) / 10
-          : 0;
+      const isPositive = Boolean(matched && matched.activity_index > 0);
+      const activity = isPositive && matched
+        ? Math.round(matched.activity_index * 10) / 10
+        : 0;
 
       timeline.push({
         year,
         month,
         label: `${MONTH_SHORT[month - 1]} ${year}`,
         activityIndex: activity,
-        zScore: matched?.z_score ?? null,
-        anomalyLevel: matched?.anomaly_level ?? 'NO_DETECTION',
-        source: matched?.source ?? 'NO_DETECTION',
-        hasRecord: Boolean(matched && matched.activity_index > 0),
+        zScore: isPositive && matched ? matched.z_score : null,
+        anomalyLevel:
+          isPositive && matched ? matched.anomaly_level : 'UNVERIFIED_ZERO',
+        source:
+          isPositive && matched ? matched.source : 'UNVERIFIED_ZERO',
+        hasRecord: isPositive,
       });
     }
   }
@@ -245,7 +247,7 @@ export function analyzeCellSeasonality(
   let summaryText: string;
   if (totalActiveMonths === 0) {
     summaryText =
-      'Kasım 2000 – Ekim 2026 gözlem penceresinde bu hücrede pozitif yangın tespiti bulunmuyor.';
+      'Kasım 2000 – Ekim 2026 gözlem penceresinde bu hücrede pozitif sıcak nokta tespiti bulunmuyor.';
   } else if (!hasSufficientHistory) {
     const peakLabel = peakMonths
       .map((m) => `${m.fullName} (%${m.frequencyPercent})`)

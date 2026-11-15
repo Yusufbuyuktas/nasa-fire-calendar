@@ -1,17 +1,18 @@
-
 export type AnomalyLevel =
   | 'VERY_LOW'
   | 'LOW'
   | 'NORMAL'
   | 'HIGH'
   | 'VERY_HIGH'
-  | 'INSUFFICIENT_DATA';
+  | 'INSUFFICIENT_DATA'
+  | 'UNVERIFIED_ZERO';
 
 export type ConfidenceLevel =
   | 'INSUFFICIENT'
   | 'LOW'
   | 'MEDIUM'
-  | 'HIGH';
+  | 'HIGH'
+  | 'UNVERIFIED';
 
 export interface FireDataRow {
   grid_id: string;
@@ -23,13 +24,8 @@ export interface FireDataRow {
   z_score: number | null;
   anomaly_level: AnomalyLevel;
   source: string;
-
-  // Historical positive hotspot record count
   history_count: number;
-
-  // Historical data sufficiency category
   confidence_level: ConfidenceLevel;
 }
 
-// Backward compatibility with the data pipeline service
 export type FireGridRow = FireDataRow;

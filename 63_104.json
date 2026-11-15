@@ -1,0 +1,44 @@
+[33mcommit 5ac4aa3c8cf60a98ab2f7121e0abfe8d6ba55f7c[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeat/yusuf-globe[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/feat/yusuf-globe[m[33m, [m[1;32mmain[m[33m)[m
+Merge: 81126be 0d56ebb
+Author: EzgiYz <ezgi.yagiz@ogr.sakarya.edu.tr>
+Date:   Sun Nov 15 17:15:48 2026 +0300
+
+    Merge pull request #5 from Yusufbuyuktas/feat/ezgi-pipeline
+    
+    Feat/ezgIntegrate MODIS–VIIRS harmonization and validated fire activity pipelinei pipeline
+
+[33mcommit 0d56ebb753d41477297ae9bc3f91fcf60f9529b4[m
+Author: EzgiYz <ezgi.yagiz@ogr.sakarya.edu.tr>
+Date:   Sun Nov 15 17:10:15 2026 +0300
+
+    docs: restore validation results and clarify LOYO methodology
+
+ docs/METHODOLOGY.md | 39 [32m++++++++++++++++++++++++++++++++++++++[m[31m-[m
+ 1 file changed, 38 insertions(+), 1 deletion(-)
+
+[33mcommit 740ad1f2a16121a19a351d765c1765a6cbb3d7f2[m
+Author: EzgiYz <ezgi.yagiz@ogr.sakarya.edu.tr>
+Date:   Sun Nov 15 16:59:36 2026 +0300
+
+    docs: document fire activity harmonization methodology
+
+ docs/METHODOLOGY.md | 207 [32m+++++++++++++++++++++[m[31m-------------------------------[m
+ 1 file changed, 85 insertions(+), 122 deletions(-)
+
+[33mcommit 659d367d0fc8860cf7f3520d6e82554af3d94260[m
+Author: EzgiYz <ezgi.yagiz@ogr.sakarya.edu.tr>
+Date:   Sun Nov 15 16:58:05 2026 +0300
+
+    fix: correct frontend validation indentation
+
+ pipeline/validate_frontend_data.py | 2 [32m+[m[31m-[m
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+[33mcommit 0bce8a3cba3664bf6c8fef4f7af657e351b8a8b1[m
+Author: EzgiYz <ezgi.yagiz@ogr.sakarya.edu.tr>
+Date:   Sun Nov 15 16:55:44 2026 +0300
+
+    test: validate frontend CSV and cell JSON consistency
+
+ pipeline/validate_frontend_data.py | 206 [32m+++++++++++++++++++++++++++++++++++++[m
+ 1 file changed, 206 insertions(+)

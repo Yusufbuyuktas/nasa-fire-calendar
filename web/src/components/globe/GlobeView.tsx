@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { type GlobeMethods } from 'react-globe.gl';
 import * as THREE from 'three';
 import { Flame, Activity, Info, Compass, Play, Pause, Eye, EyeOff } from 'lucide-react';
@@ -8,7 +8,7 @@ import { storyCases, type StoryCase } from './storyCases';
 
 interface GlobeViewProps {
   selectedCell: FireGridRow | null;
-  onSelectCell: (cell: FireGridRow | null) => void;
+  onSelectCell: (cell: FireGridRow) => void;
   selectedYear: number;
   onSelectYear: (year: number) => void;
   selectedMonth: number;
@@ -35,6 +35,17 @@ const ANOMALY_COLORS: Record<AnomalyLevel, string> = {
   HIGH: '#f97316',
   VERY_HIGH: '#ef4444',
   INSUFFICIENT_DATA: '#64748b',
+  UNVERIFIED_ZERO: '#334155',
+};
+
+const ANOMALY_LABELS: Record<AnomalyLevel, string> = {
+  VERY_HIGH: 'Çok Yüksek',
+  HIGH: 'Yüksek',
+  NORMAL: 'Normal',
+  LOW: 'Düşük',
+  VERY_LOW: 'Çok Düşük',
+  INSUFFICIENT_DATA: 'Yetersiz Tarihçe',
+  UNVERIFIED_ZERO: 'Doğrulanmamış Sıfır',
 };
 
 function getActivityColor(val: number): string {
@@ -45,7 +56,6 @@ function getActivityColor(val: number): string {
   return '#4c1d95';
 }
 
-// Görünmez 2°×2° tıklama/hover alanı (yuvarlak noktaların görünümünü bozmaz)
 const HITBOX_TILE_MATERIAL = new THREE.MeshBasicMaterial({
   colorWrite: false,
   depthWrite: false,
@@ -171,13 +181,11 @@ export function GlobeView({
     };
   }, [selectedYear]);
 
-  // Seçili ayın tüm kayıtları (tıklama araması için)
   const monthRows = useMemo(
     () => yearRows.filter((row) => row.month === selectedMonth),
     [yearRows, selectedMonth]
   );
 
-  // Kürede çizilecek aktif hücreler (INSUFFICIENT_DATA artık 2000–2003 için görünür)
   const activeCells = useMemo(() => {
     return monthRows.filter((row) => {
       if (!row.activity_index || row.activity_index <= 0) return false;
@@ -214,10 +222,10 @@ export function GlobeView({
       }
     }
 
-   if (closestRow && minDist <= 8) {
-  setEmptyCellNotice(null);
-  onSelectCell(toCleanFireRow(closestRow));
-}
+    if (closestRow && minDist <= 8) {
+      setEmptyCellNotice(null);
+      onSelectCell(toCleanFireRow(closestRow));
+    }
     pendingStoryRef.current = null;
   }, [activeCells, selectedYear, selectedMonth, onSelectCell]);
 
@@ -226,17 +234,9 @@ export function GlobeView({
       if (typeof index === 'number') {
         tourIndexRef.current = index;
       }
-
       setActiveStory(story);
       setEmptyCellNotice(null);
-
-      if (story.coverageStatus === 'outside_download_bounds') {
-        onSelectCell(null);
-        pendingStoryRef.current = null;
-      } else {
-        pendingStoryRef.current = story;
-      }
-
+      pendingStoryRef.current = story;
       onSelectYear(story.year);
       onSelectMonth(story.month);
 
@@ -247,10 +247,10 @@ export function GlobeView({
         );
       }
     },
-    [onSelectCell, onSelectYear, onSelectMonth]
+    [onSelectYear, onSelectMonth]
   );
 
-useEffect(() => {
+  useEffect(() => {
     if (!isAutoTour) return;
 
     flyToStory(storyCases[tourIndexRef.current], tourIndexRef.current);
@@ -304,14 +304,18 @@ useEffect(() => {
 
   const getTileLabel = useCallback((d: object) => {
     const r = d as FireGridRow;
+    const zScore = r.z_score;
     const zText =
-      r.z_score !== null && r.z_score !== undefined ? r.z_score.toFixed(2) : 'Yok';
+      typeof zScore === 'number' && Number.isFinite(zScore)
+        ? zScore.toFixed(2)
+        : 'Yok';
+    const levelLabel = ANOMALY_LABELS[r.anomaly_level] ?? r.anomaly_level;
     return `
       <div style="background:#0f172a;border:1px solid #334155;padding:8px 10px;border-radius:6px;font-family:sans-serif;font-size:12px;color:#f8fafc;">
         <div style="font-weight:700;color:#fb923c;margin-bottom:4px;">Hücre: ${r.grid_id} (${r.lat}°, ${r.lon}°)</div>
-        <div>Aktivite İndeksi: <b>${r.activity_index?.toFixed(1)}</b></div>
-        <div>Anomali: <b>${r.anomaly_level}</b> (Z: ${zText})</div>
-        <div style="color:#94a3b8;font-size:11px;margin-top:2px;">Kaynak: ${r.source} • İncelemek için tıkla</div>
+        <div>Sıcak Nokta Aktivite İndeksi: <b>${r.activity_index?.toFixed(1)}</b></div>
+        <div>Anomali: <b>${levelLabel}</b> (Z: ${zText})</div>
+        <div style="color:#94a3b8;font-size:11px;margin-top:2px;">Kaynak: ${r.source} • Geçmişi incelemek için tıkla</div>
       </div>
     `;
   }, []);
@@ -320,7 +324,7 @@ useEffect(() => {
     (tile: object) => {
       setIsAutoTour(false);
       setEmptyCellNotice(null);
-      onSelectCell(tile as FireGridRow);
+      onSelectCell(toCleanFireRow(tile as FireGridRow));
     },
     [onSelectCell]
   );
@@ -329,11 +333,13 @@ useEffect(() => {
     ({ lat, lng }: { lat: number; lng: number }) => {
       setIsAutoTour(false);
       const cellInfo = coordsToGridCell(lat, lng);
-      const matchedRow = monthRows.find((r) => r.grid_id === cellInfo.grid_id);
+      const matchedRow = monthRows.find(
+        (r) => r.grid_id === cellInfo.grid_id && r.activity_index > 0
+      );
 
       if (matchedRow) {
         setEmptyCellNotice(null);
-        onSelectCell(matchedRow);
+        onSelectCell(toCleanFireRow(matchedRow));
       } else {
         setEmptyCellNotice(cellInfo);
       }
@@ -380,7 +386,7 @@ useEffect(() => {
                     ? 'bg-slate-800/95 border-slate-600 text-slate-100'
                     : 'bg-slate-900/90 border-slate-800 text-slate-400 hover:text-slate-200'
                 }`}
-                title="Mevsim normallerindeki (NORMAL) yangın hücrelerini göster/gizle"
+                title="Mevsim normallerindeki (NORMAL) sıcak nokta hücrelerini göster/gizle"
               >
                 {showNormalCells ? (
                   <Eye className="h-3.5 w-3.5 text-cyan-400" />
@@ -416,11 +422,11 @@ useEffect(() => {
             Hikâye Modu:
           </span>
 
-          {storyCases.map((story: StoryCase, idx: number) => {
-        const isSelected = activeStory?.id === story.id;
-        return (
-          <button
-            key={story.id}
+          {storyCases.map((story, idx) => {
+            const isSelected = activeStory?.id === story.id;
+            return (
+              <button
+                key={story.id}
                 onClick={() => {
                   setIsAutoTour(false);
                   flyToStory(story, idx);
@@ -450,12 +456,12 @@ useEffect(() => {
           </button>
         </div>
 
-        {/* Boş Hücre Tıklama Bildirimi */}
+        {/* Gözlenmeyen / Varsayımsal Sıfır Bildirimi */}
         {emptyCellNotice && (
           <div className="self-start flex items-center gap-3 rounded-lg bg-slate-900/95 px-3 py-2 border border-cyan-500/40 backdrop-blur pointer-events-auto text-xs text-slate-200">
             <span>
               Hücre <strong className="text-cyan-400">{emptyCellNotice.grid_id}</strong> ({emptyCellNotice.lat}°, {emptyCellNotice.lon}°):{' '}
-              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} döneminde kayıtlı yangın aktivitesi yok.
+              {MONTH_NAMES[selectedMonth - 1]} {selectedYear} için pozitif sıcak nokta tespiti yok (doğrulanmamış sıfır / kapsam dışı).
             </span>
             <button
               onClick={() => setEmptyCellNotice(null)}
@@ -486,17 +492,11 @@ useEffect(() => {
             <p className="text-[11px] text-slate-300 mt-0.5 leading-relaxed">
               {activeStory.summary}
             </p>
-            {activeStory.coverageStatus === 'outside_download_bounds' && (
-              <p className="mt-2 text-amber-300 font-medium">
-                Veri kapsamı dışında: Bu bölge mevcut NASA FIRMS indirme sınırlarının dışındadır.
-                Bu hikâye için yangın aktivitesi veya anomali sonucu sunulamaz.
-              </p>
-            )}
           </div>
         )}
       </div>
 
-      {/* 3D Küre: Görsel Yuvarlak Noktalar + Görünmez 2°×2° Tıklama Alanları */}
+      {/* 3D Küre */}
       <Globe
         ref={globeRef}
         onGlobeReady={handleGlobeReady}
@@ -586,7 +586,6 @@ useEffect(() => {
           </div>
         </div>
 
-        {/* Lejant ve Bilimsel Uyarı */}
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-[11px] text-slate-400">
           {viewMode === 'anomaly' ? (
             <div className="flex flex-wrap items-center gap-3">
@@ -611,12 +610,7 @@ useEffect(() => {
 
           <span className="flex items-center gap-1 text-slate-500">
             <Info className="h-3 w-3 shrink-0" />
-            Tarihsel aktivite göstergesidir; operasyonel erken uyarı/tahmin değildir.
-          </span>
-          <span className="flex items-start gap-1 text-amber-300/80">
-            <Info className="h-3 w-3 shrink-0 mt-0.5" />
-            Veri kapsamı sınırlıdır (120.6°B–180°D, 57.8°G–38.9°K).
-            Veri bulunmaması, yangın olmadığı anlamına gelmez.
+            Kalibre edilmiş sıcak nokta göstergesidir (yanan alan/şiddet değildir); veri kapsamı 57.8°G–38.9°K, 120.6°B–180.0°D sınırlarıyla sınırlıdır.
           </span>
         </div>
       </div>
