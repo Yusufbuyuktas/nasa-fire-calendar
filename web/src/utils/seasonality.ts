@@ -48,18 +48,18 @@ export interface CellSeasonalityReport {
 }
 
 export const DATASET_START_YEAR = 2000;
-export const DATASET_START_MONTH = 11; // Kasım 2000 (MODIS Terra başlangıcı)
+export const DATASET_START_MONTH = 11; // November 2000 (MODIS Terra start)
 export const DATASET_END_YEAR = 2026;
-export const DATASET_END_MONTH = 10; // Ekim 2026 (kısmi yıl sonu)
+export const DATASET_END_MONTH = 10; // October 2026 (partial year end)
 
 export const MONTH_SHORT = [
-  'Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz',
-  'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara',
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
 ];
 
 export const MONTH_FULL = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
 export function isWithinObservationWindow(year: number, month: number): boolean {
@@ -139,9 +139,10 @@ export function buildZeroFilledChronologicalSeries(
       if (!isWithinObservationWindow(year, month)) continue;
       const matched = rowMap.get(`${year}-${month}`);
       const isPositive = Boolean(matched && matched.activity_index > 0);
-      const activity = isPositive && matched
-        ? Math.round(matched.activity_index * 10) / 10
-        : 0;
+      const activity =
+        isPositive && matched
+          ? Math.round(matched.activity_index * 10) / 10
+          : 0;
 
       timeline.push({
         year,
@@ -191,7 +192,9 @@ export function analyzeCellSeasonality(
       totalObservedYears > 0 ? activeYears / totalObservedYears : 0;
     const sum = vals.reduce((acc, v) => acc + v, 0);
     const meanActivity =
-      totalObservedYears > 0 ? Math.round((sum / totalObservedYears) * 10) / 10 : 0;
+      totalObservedYears > 0
+        ? Math.round((sum / totalObservedYears) * 10) / 10
+        : 0;
     const medianActivity = Math.round(computeMedian(vals) * 10) / 10;
     const maxActivity =
       vals.length > 0 ? Math.round(Math.max(...vals) * 10) / 10 : 0;
@@ -247,34 +250,34 @@ export function analyzeCellSeasonality(
   let summaryText: string;
   if (totalActiveMonths === 0) {
     summaryText =
-      'Kasım 2000 – Ekim 2026 gözlem penceresinde bu hücrede pozitif sıcak nokta tespiti bulunmuyor.';
+      'No positive hotspot detections were recorded in this cell across the November 2000 – October 2026 observation window.';
   } else if (!hasSufficientHistory) {
     const peakLabel = peakMonths
-      .map((m) => `${m.fullName} (%${m.frequencyPercent})`)
+      .map((m) => `${m.fullName} (${m.frequencyPercent}%)`)
       .join(', ');
-    summaryText = `Yetersiz tarihsel veri (${activeYearCount} aktif yıl < 10 yıl eşiği): Periyodiklik çıkarımı düşük güvenilirliktedir. Gözlenen en hareketli aylar: ${peakLabel}.`;
+    summaryText = `Limited historical baseline (${activeYearCount} active yrs < 10-yr threshold): periodicity inference has low statistical reliability. Most active months observed: ${peakLabel}.`;
   } else {
     const peakLabel = peakMonths
-      .map((m) => `${m.fullName} (%${m.frequencyPercent})`)
+      .map((m) => `${m.fullName} (${m.frequencyPercent}%)`)
       .join(', ');
     const concentrationDesc =
       seasonalConcentration >= 0.55
-        ? 'yüksek mevsimsel odaklanma'
+        ? 'high seasonal concentration'
         : seasonalConcentration >= 0.3
-        ? 'belirgin mevsimsel kümelenme'
-        : 'yıl geneline yayılan dağılım';
+        ? 'distinct seasonal clustering'
+        : 'broad year-round distribution';
     const r12Text =
       lag12Autocorrelation !== null
-        ? `Lag-12 yıllık döngü korelasyonu r = ${lag12Autocorrelation.toFixed(2)}`
-        : 'yıllık döngü korelasyonu hesaplanamadı';
+        ? `Lag-12 annual autocorrelation r = ${lag12Autocorrelation.toFixed(2)}`
+        : 'annual autocorrelation unavailable';
     const periodicityDesc =
       periodicityStrength === 'STRONG'
-        ? 'Güçlü yıllık periyodiklik gözlenmektedir.'
+        ? 'Strong annual periodicity is observed.'
         : periodicityStrength === 'MODERATE'
-        ? 'Orta düzeyde mevsimsel tekrar eğilimi vardır.'
-        : 'Zayıf periyodiklik; aktivite yıllar arasında düzensiz seyretmektedir.';
+        ? 'Moderate seasonal recurrence is present.'
+        : 'Weak periodicity; hotspot activity varies irregularly across years.';
 
-    summaryText = `26 yıllık gözlem döneminde (${activeYearCount} aktif yıl) aktivite en sık ${peakLabel} aylarında yoğunlaşmaktadır (${concentrationDesc}; ${r12Text}). ${periodicityDesc}`;
+    summaryText = `Across the 26-year observation window (${activeYearCount} active yrs), hotspot activity concentrates primarily in ${peakLabel} (${concentrationDesc}; ${r12Text}). ${periodicityDesc}`;
   }
 
   return {
