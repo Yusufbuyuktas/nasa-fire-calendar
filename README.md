@@ -1,6 +1,7 @@
 # NASA FIRMS — Fire Activity Calendar
 
-> 🏆 **3rd Place Winner & Global Nominee** — *NASA Space Apps Challenge (Sakarya)*
+> 🏆 **3rd Place Winner & Global Nominee** — *NASA Space Apps Challenge (Sakarya)*  
+> 🌐 **Live Application:** [https://nasa-fire-calendar.vercel.app/](https://nasa-fire-calendar.vercel.app/)
 
 An interactive web application that harmonizes active fire (hotspot) satellite data from **MODIS (2000–2026)**, **VIIRS NOAA-20 (2018–2026)**, and **VIIRS NOAA-21 (2023–2026)** on a **2° × 2° spatial grid**, providing multi-year seasonality and anomaly analysis.
 
