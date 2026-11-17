@@ -1,33 +1,35 @@
-﻿# NASA FIRMS — Yangın Aktivitesi Takvimi
+# NASA FIRMS — Fire Activity Calendar
 
-MODIS (2000–2026), VIIRS NOAA-20 (2018–2026) ve VIIRS NOAA-21 (2023–2026) uydu aktif yangın (hotspot) verilerini 2° × 2° mekânsal ızgarada uyumlaştıran, çok yıllık mevsimsellik ve anomali analizi sunan etkileşimli web uygulaması.
+> 🏆 **3rd Place Winner & Global Nominee** — *NASA Space Apps Challenge (Sakarya)*
 
-> **Bilimsel Sorumluluk Notu:** Bu uygulama uydu sıcak nokta kayıtlarına dayalı **tarihsel aktivite ve anomali göstergesi** sunar; operasyonel erken uyarı sistemi veya yangın tahmini değildir.
+An interactive web application that harmonizes active fire (hotspot) satellite data from **MODIS (2000–2026)**, **VIIRS NOAA-20 (2018–2026)**, and **VIIRS NOAA-21 (2023–2026)** on a **2° × 2° spatial grid**, providing multi-year seasonality and anomaly analysis.
+
+> **Scientific Responsibility Note:** This application provides a **historical activity and anomaly indicator** based on satellite hotspot records; it is not an operational early-warning system or a wildfire forecasting tool.
 
 ---
 
-## Proje Yapısı
+## Project Structure
 
 ```text
 nasa-fire-calendar/
 ├── data/
-│   ├── raw/              # NASA FIRMS arşiv CSV dosyaları (Git'e dahil değildir)
-│   └── processed/        # Pipeline ara çıktıları (Git'e dahil değildir)
-├── docs/                 # Metodoloji ve teknik dokümantasyon
-├── pipeline/             # Python & DuckDB veri temizleme, uyumlaştırma ve anomali hattı
-└── web/                  # React + TypeScript + Vite + Tailwind + Three.js/ECharts arayüzü
+│   ├── raw/              # NASA FIRMS archive CSV files (excluded from Git)
+│   └── processed/        # Pipeline intermediate outputs (excluded from Git)
+├── docs/                 # Methodology and technical documentation
+├── pipeline/             # Python & DuckDB data cleaning, harmonization, and anomaly pipeline
+└── web/                  # React + TypeScript + Vite + Tailwind + Three.js/ECharts frontend
 ```
 
 ---
 
-## Gereksinimler
+## Requirements
 
-- **Node.js:** `>= 22.0.0` (test edilen sürüm kök dizindeki `.nvmrc` dosyasında sabitlenmiştir)
-- **Python:** `3.11+` (test edilen sürüm: `3.13`)
+- **Node.js:** `>= 22.0.0` (tested version is pinned in `.nvmrc` in the root directory)
+- **Python:** `3.11+` (tested version: `3.13`)
 
 ---
 
-## Kurulum ve Çalıştırma (Web Arayüzü)
+## Setup & Running (Web Interface)
 
 ```bash
 cd web
@@ -35,7 +37,7 @@ npm install
 npm run dev
 ```
 
-Üretim derlemesi ve kod kalite kontrolü için:
+For production build and code quality checks:
 
 ```bash
 cd web
@@ -45,11 +47,11 @@ npm run build
 
 ---
 
-## Veri İndirme ve Python Pipeline Çalıştırma Sırası
+## Data Download & Python Pipeline Execution Order
 
-Web arayüzü herhangi bir canlı backend sunucusuna ihtiyaç duymadan `web/public/data/{yıl}.csv` statik dosyalarını okur. Veri hattını sıfırdan çalıştırmak için:
+The web interface reads static `web/public/data/{year}.csv` files without requiring any live backend server. To run the data pipeline from scratch:
 
-### 1. Python Sanal Ortamını Kurun
+### 1. Set Up the Python Virtual Environment
 
 ```bash
 python -m venv .venv
@@ -59,17 +61,17 @@ python -m venv .venv
 source .venv/bin/activate && pip install -r pipeline/requirements.txt
 ```
 
-### 2. Ham FIRMS Verilerini İndirin
+### 2. Download Raw FIRMS Data
 
-1. [NASA FIRMS Archive Download](https://firms.modaps.eosdis.nasa.gov/download/) sayfasından CSV formatında arşiv talebi oluşturun.
-2. İndirilen dosyaları `data/raw/` klasörü altına yerleştirin. `clean.py` dosya adındaki sensör kodunu otomatik tanır:
+1. Submit an archive request in CSV format from the [NASA FIRMS Archive Download](https://firms.modaps.eosdis.nasa.gov/download/) page.
+2. Place the downloaded files into the `data/raw/` directory. `clean.py` automatically detects the sensor code from the filename:
    - `M-C61` → MODIS Collection 6.1
    - `SV-C2` → VIIRS S-NPP
    - `J1V-C2` → VIIRS NOAA-20
    - `J2V-C2` → VIIRS NOAA-21
-3. Her CSV dosyası en az `latitude`, `longitude`, `acq_date` ve `frp` sütunlarını içermelidir.
+3. Each CSV file must contain at least the `latitude`, `longitude`, `acq_date`, and `frp` columns.
 
-### 3. Pipeline Adımlarını Sırasıyla Çalıştırın
+### 3. Run the Pipeline Steps Sequentially
 
 ```bash
 .\.venv\Scripts\python pipeline\clean.py
@@ -80,23 +82,23 @@ source .venv/bin/activate && pip install -r pipeline/requirements.txt
 .\.venv\Scripts\python pipeline\split_frontend.py
 ```
 
-| Adım | Betik | Açıklama |
+| Step | Script | Description |
 | :--- | :--- | :--- |
-| 1 | `clean.py` | `data/raw/` altındaki ham CSV dosyalarını temizler ve sensör etiketler. |
-| 2 | `aggregate.py` | Kayıtları 2° × 2° ızgara hücrelerinde aylık bazda toplulaştırır. |
-| 3 | `harmonize.py` | MODIS ve VIIRS ölçümlerini tek aktivite indeksinde kalibre eder. |
-| 4 | `anomalies_v2.py` | Tarihsel taban çizgisine göre z-skoru ve anomali sınıflarını hesaplar. |
-| 5 | `export_frontend.py` | Arayüz şemasına uygun `data/processed/frontend_activity.csv` çıktısını üretir. |
-| 6 | `split_frontend.py` | Veriyi yıllara bölerek `web/public/data/{yıl}.csv` dosyalarını oluşturur. |
+| 1 | `clean.py` | Cleans raw CSV files under `data/raw/` and assigns sensor labels. |
+| 2 | `aggregate.py` | Aggregates records on a monthly basis into 2° × 2° grid cells. |
+| 3 | `harmonize.py` | Calibrates MODIS and VIIRS measurements into a single unified activity index. |
+| 4 | `anomalies_v2.py` | Computes Z-scores and anomaly classifications against the historical baseline. |
+| 5 | `export_frontend.py` | Generates `data/processed/frontend_activity.csv` matching the frontend schema. |
+| 6 | `split_frontend.py` | Splits the dataset by year to generate `web/public/data/{year}.csv` files. |
 
 ---
 
-## Mevcut Veri Kapsamı Notu
+## Current Data Coverage Note
 
-- **Zaman Aralığı:** Kasım 2000 – Ekim 2026. Başlangıç ve bitiş yılları kısmi kapsam içerir.
-- **Kullanılan Sensörler:** MODIS (2000–2026), VIIRS NOAA-20 (2018–2026), VIIRS NOAA-21 (2023–2026).
-- **NASA FIRMS İndirme Sınırları:** Batı -120.6°, Güney -57.8°, Doğu 180°, Kuzey 38.9°.
-- **Mekânsal Çözünürlük:** 2° × 2° grid.
-- **Önemli Sınırlama:** Veri seti küresel değildir. İndirme sınırları dışındaki bölgeler için yangın aktivitesi değerlendirilemez.
-- **Eksik Veri:** Hotspot kaydı bulunmaması, yangın olmadığı veya uydu gözleminin eksiksiz olduğu anlamına gelmez.
-- **Doğrulama:** 566.355 harmonize kaydın koordinatları kontrol edilmiştir; geçersiz koordinat bulunmamıştır. Bu kontrol bölgesel veri bütünlüğünü kanıtlamaz.
+- **Time Range:** November 2000 – October 2026. Start and end years contain partial coverage.
+- **Sensors Used:** MODIS (2000–2026), VIIRS NOAA-20 (2018–2026), VIIRS NOAA-21 (2023–2026).
+- **NASA FIRMS Download Bounds:** West `-120.6°`, South `-57.8°`, East `180°`, North `38.9°`.
+- **Spatial Resolution:** 2° × 2° grid.
+- **Important Limitation:** The dataset is not global. Fire activity cannot be evaluated for regions outside the download boundaries.
+- **Missing Data:** The absence of a hotspot record does not imply the absence of fire or complete satellite observation.
+- **Validation:** Coordinates of all 566,355 harmonized records have been verified; zero invalid coordinates were found. This check does not guarantee regional data completeness.
