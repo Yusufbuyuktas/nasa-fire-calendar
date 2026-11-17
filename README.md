@@ -3,6 +3,9 @@
 > 🏆 **3rd Place Winner & Global Nominee** — *NASA Space Apps Challenge (Sakarya)*  
 > 🌐 **Live Application:** [https://nasa-fire-calendar.vercel.app/](https://nasa-fire-calendar.vercel.app/)
 
+<img width="1917" height="905" alt="Ekran görüntüsü 2026-11-15 213356" src="https://github.com/user-attachments/assets/ccd2283b-ebf0-4217-b97d-e2b1ae6c47a6" />
+
+
 An interactive web application that harmonizes active fire (hotspot) satellite data from **MODIS (2000–2026)**, **VIIRS NOAA-20 (2018–2026)**, and **VIIRS NOAA-21 (2023–2026)** on a **2° × 2° spatial grid**, providing multi-year seasonality and anomaly analysis.
 
 > **Scientific Responsibility Note:** This application provides a **historical activity and anomaly indicator** based on satellite hotspot records; it is not an operational early-warning system or a wildfire forecasting tool.
